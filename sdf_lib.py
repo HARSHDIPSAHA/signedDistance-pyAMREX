@@ -2,10 +2,12 @@ import numpy as np
 
 
 def vec2(x, y):
+    x, y = np.broadcast_arrays(x, y)
     return np.stack([x, y], axis=-1)
 
 
 def vec3(x, y, z):
+    x, y, z = np.broadcast_arrays(x, y, z)
     return np.stack([x, y, z], axis=-1)
 
 
@@ -82,7 +84,7 @@ def sdCylinder(p, c):
 def sdConeExact(p, c, h):
     q = h * vec2(safe_div(c[0], c[1]), -1.0)
     w = vec2(length(p[..., [0, 2]]), p[..., 1])
-    a = w - q * clamp(dot(w, q) / dot(q, q), 0.0, 1.0)
+    a = w - q * clamp(dot(w, q) / dot(q, q), 0.0, 1.0)[..., None]
     b = w - q * vec2(clamp(safe_div(w[..., 0], q[0]), 0.0, 1.0), 1.0)
     k = np.sign(q[1])
     d = np.minimum(dot2(a), dot2(b))
@@ -97,7 +99,7 @@ def sdConeBound(p, c, h):
 
 def sdConeInfinite(p, c):
     q = vec2(length(p[..., [0, 2]]), -p[..., 1])
-    d = length(q - c * np.maximum(dot(q, c), 0.0))
+    d = length(q - c * np.maximum(dot(q, c), 0.0)[..., None])
     return d * np.where(q[..., 0] * c[1] - q[..., 1] * c[0] < 0.0, -1.0, 1.0)
 
 
@@ -178,7 +180,7 @@ def sdCappedCone(p, h, r1, r2):
         q[..., 0] - np.minimum(q[..., 0], np.where(q[..., 1] < 0.0, r1, r2)),
         np.abs(q[..., 1]) - h,
     )
-    cb = q - k1 + k2 * clamp(dot(k1 - q, k2) / dot2(k2), 0.0, 1.0)
+    cb = q - k1 + k2 * clamp(dot(k1 - q, k2) / dot2(k2), 0.0, 1.0)[..., None]
     s = np.where((cb[..., 0] < 0.0) & (ca[..., 1] < 0.0), -1.0, 1.0)
     return s * np.sqrt(np.minimum(dot2(ca), dot2(cb)))
 
@@ -204,7 +206,7 @@ def sdCappedConeSegment(p, a, b, ra, rb):
 def sdSolidAngle(p, c, ra):
     q = vec2(length(p[..., [0, 2]]), p[..., 1])
     l = length(q) - ra
-    m = length(q - c * clamp(dot(q, c), 0.0, ra))
+    m = length(q - c * clamp(dot(q, c), 0.0, ra)[..., None])
     return np.maximum(l, m * np.sign(c[1] * q[..., 0] - c[0] * q[..., 1]))
 
 
