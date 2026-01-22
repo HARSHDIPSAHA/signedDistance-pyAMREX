@@ -26,6 +26,15 @@ python render_all_sdfs.py
 Each SDF produces a `vis/<name>.png` visualization with a diverging colormap
 and the zero level-set contour drawn in black.
 
+## Color guide for `vis/` images
+
+The PNGs use a diverging colormap:
+
+- Blue tones: negative SDF values (inside the shape).
+- Red tones: positive SDF values (outside the shape).
+- White/near zero: near the surface.
+- Black contour line: the zero level set (the shape boundary).
+
 ## How pyAMReX helps
 
 pyAMReX provides the grid/mesh infrastructure that makes it easy to evaluate
