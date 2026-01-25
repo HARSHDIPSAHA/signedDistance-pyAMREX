@@ -20,6 +20,8 @@ Complete reference guide for using the Signed Distance Function (SDF) library wi
 
 ### AMReX MultiFab Mode (Recommended for Solvers)
 
+**Generate and save level set:**
+
 ```python
 import amrex.space3d as amr
 from sdf3d import SDFLibrary
@@ -37,14 +39,21 @@ try:
     # Create library instance
     lib = SDFLibrary(geom, ba, dm)
 
-    # Generate SDF field
-    mf = lib.sphere(center=(0, 0, 0), radius=0.3)
-    # mf is an AMReX MultiFab, ready for solvers
+    # Generate level set field φ(x,y,z)
+    levelset = lib.sphere(center=(0, 0, 0), radius=0.3)
+    # levelset is an AMReX MultiFab containing the level set
+
+    # Save level set to plotfile (for your solver)
+    varnames = amr.Vector_string(["phi"])
+    amr.write_single_level_plotfile("output/my_levelset", levelset, varnames, geom, 0.0, 0)
+    print("✅ Level set saved to: output/my_levelset/")
 finally:
     amr.finalize()
 ```
 
 ### Geometry API Mode (For Visualization/Testing)
+
+**Generate and save level set:**
 
 ```python
 from sdf3d import Sphere, sample_levelset
@@ -53,11 +62,15 @@ import numpy as np
 # Create geometry
 sphere = Sphere(0.3)
 
-# Sample on grid
+# Generate level set on grid
 bounds = ((-1, 1), (-1, 1), (-1, 1))
 res = (64, 64, 64)
 phi = sample_levelset(sphere, bounds, res)
-# phi is a numpy array
+# phi is a numpy array containing the level set φ(x,y,z)
+
+# Save level set to file
+np.save("output/levelset.npy", phi)
+print("✅ Level set saved to: output/levelset.npy")
 ```
 
 ---
@@ -445,54 +458,175 @@ print(phi.min(), phi.max())  # negative, positive
 
 ---
 
+## Getting Level Set as Output
+
+**The level set (φ) is the signed distance field itself.** The MultiFab or NumPy array you get from the library **IS** the level set data.
+
+### What is a Level Set?
+
+A level set φ(x, y, z) is a scalar field where:
+- **φ < 0**: Inside the geometry
+- **φ = 0**: On the surface (zero level set)
+- **φ > 0**: Outside the geometry
+
+The library generates this field on a grid, and you can save it for your solver.
+
+---
+
 ## Output Formats
 
-### AMReX MultiFab
+### AMReX MultiFab (Level Set Output)
 
-When using `SDFLibrary`, output is an `amr.MultiFab` object.
+When using `SDFLibrary`, the output **MultiFab contains the level set field**.
 
-**Accessing values:**
-```python
-mf = lib.sphere(center=(0, 0, 0), radius=0.3)
-
-# Iterate over boxes
-for mfi in mf:
-    arr = mf.array(mfi).to_numpy()
-    # arr shape: (ny, nx, nz, ncomp) or (ny, nx, nz, ncomp, ngrow)
-    vals = arr[..., 0] if arr.ndim == 4 else arr[..., 0, 0]
-    # Process vals (numpy array for this box)
-```
-
-**Writing to plotfile:**
+**The MultiFab IS the level set:**
 ```python
 import amrex.space3d as amr
+from sdf3d import SDFLibrary
 
-varnames = amr.Vector_string(["sdf"])
-amr.write_single_level_plotfile("output/plt00000", mf, varnames, geom, 0.0, 0)
+amr.initialize([])
+try:
+    # Setup grid
+    real_box = amr.RealBox([-1, -1, -1], [1, 1, 1])
+    domain = amr.Box(amr.IntVect(0, 0, 0), amr.IntVect(63, 63, 63))
+    geom = amr.Geometry(domain, real_box, 0, [0, 0, 0])
+    ba = amr.BoxArray(domain)
+    ba.max_size(32)
+    dm = amr.DistributionMapping(ba)
+
+    lib = SDFLibrary(geom, ba, dm)
+    
+    # Generate level set
+    levelset = lib.sphere(center=(0, 0, 0), radius=0.3)
+    # levelset is an amr.MultiFab containing φ(x,y,z)
+    
+    # Save level set to plotfile (for solver input)
+    varnames = amr.Vector_string(["phi"])  # or "sdf", "levelset", etc.
+    amr.write_single_level_plotfile("output/levelset_plt00000", levelset, varnames, geom, 0.0, 0)
+    print("Level set saved to: output/levelset_plt00000/")
+finally:
+    amr.finalize()
 ```
 
-### NumPy Array
+**Accessing level set values:**
+```python
+# Iterate over boxes to access level set values
+for mfi in levelset:
+    arr = levelset.array(mfi).to_numpy()
+    # arr shape: (ny, nx, nz, ncomp) or (ny, nx, nz, ncomp, ngrow)
+    phi = arr[..., 0] if arr.ndim == 4 else arr[..., 0, 0]
+    # phi is the level set field for this box
+    # phi[i,j,k] = signed distance at cell (i,j,k)
+```
 
-When using `sample_levelset`, output is a NumPy array.
+**Complete example: Generate and save level set**
+```python
+import amrex.space3d as amr
+from sdf3d import SDFLibrary
 
-**Saving:**
+amr.initialize([])
+try:
+    # Setup
+    real_box = amr.RealBox([-1, -1, -1], [1, 1, 1])
+    domain = amr.Box(amr.IntVect(0, 0, 0), amr.IntVect(127, 127, 127))
+    geom = amr.Geometry(domain, real_box, 0, [0, 0, 0])
+    ba = amr.BoxArray(domain)
+    ba.max_size(32)
+    dm = amr.DistributionMapping(ba)
+
+    lib = SDFLibrary(geom, ba, dm)
+
+    # Build complex geometry
+    base = lib.sphere(center=(0, 0, 0), radius=0.4)
+    hole = lib.sphere(center=(0.2, 0, 0), radius=0.25)
+    levelset = lib.subtract(base, hole)
+
+    # Save level set to plotfile
+    varnames = amr.Vector_string(["phi"])
+    amr.write_single_level_plotfile("output/my_levelset", levelset, varnames, geom, 0.0, 0)
+    print("✅ Level set saved to: output/my_levelset/")
+    print("   Your solver can now read this plotfile!")
+finally:
+    amr.finalize()
+```
+
+### NumPy Array (Level Set Output)
+
+When using `sample_levelset`, the output **NumPy array IS the level set field**.
+
+**Generate and save level set:**
+```python
+from sdf3d import Sphere, sample_levelset
+import numpy as np
+
+# Create geometry
+sphere = Sphere(0.3)
+
+# Generate level set on grid
+bounds = ((-1, 1), (-1, 1), (-1, 1))
+res = (128, 128, 128)
+phi = sample_levelset(sphere, bounds, res)
+# phi is a numpy array of shape (128, 128, 128)
+# phi[i,j,k] = signed distance at grid point (i,j,k)
+
+# Save level set to file
+np.save("output/levelset.npy", phi)
+print("✅ Level set saved to: output/levelset.npy")
+print(f"   Shape: {phi.shape}")
+print(f"   Min (inside): {phi.min():.6f}")
+print(f"   Max (outside): {phi.max():.6f}")
+```
+
+**Load level set from file:**
 ```python
 import numpy as np
 
-phi = sample_levelset(sphere, bounds, res)
-np.save("output/levelset.npy", phi)
+# Load level set
+phi = np.load("output/levelset.npy")
+print(f"Loaded level set: shape {phi.shape}")
+
+# Use in your code
+# phi[i,j,k] gives signed distance at grid point (i,j,k)
+inside = phi < 0
+surface = np.abs(phi) < 0.01  # Near zero level set
+outside = phi > 0
 ```
 
-**Loading:**
+**Complete example: Generate, save, and verify level set**
 ```python
-phi = np.load("output/levelset.npy")
+from sdf3d import Sphere, Box, Union, sample_levelset
+import numpy as np
+
+# Build geometry
+sphere = Sphere(0.25).translate(-0.3, 0, 0)
+box = Box((0.2, 0.2, 0.2)).translate(0.3, 0, 0)
+combined = Union(sphere, box)
+
+# Generate level set
+bounds = ((-1, 1), (-1, 1), (-1, 1))
+res = (256, 256, 256)
+phi = sample_levelset(combined, bounds, res)
+
+# Save level set
+np.save("output/combined_levelset.npy", phi)
+
+# Verify
+print("✅ Level set generated and saved!")
+print(f"   File: output/combined_levelset.npy")
+print(f"   Shape: {phi.shape}")
+print(f"   Domain: x∈[{bounds[0][0]}, {bounds[0][1]}], "
+      f"y∈[{bounds[1][0]}, {bounds[1][1]}], "
+      f"z∈[{bounds[2][0]}, {bounds[2][1]}]")
+print(f"   Resolution: {res}")
+print(f"   Values: min={phi.min():.6f} (inside), max={phi.max():.6f} (outside)")
+print(f"   Surface cells (|φ| < 0.01): {(np.abs(phi) < 0.01).sum()}")
 ```
 
 ---
 
 ## Complete Examples
 
-### Example 1: Complex Shape with AMReX
+### Example 1: Complex Shape with AMReX (Level Set Output)
 
 ```python
 import amrex.space3d as amr
@@ -513,16 +647,17 @@ try:
     # Build complex shape: sphere with box cutout
     base = lib.sphere(center=(0, 0, 0), radius=0.4)
     cutter = lib.box(center=(0.2, 0, 0), size=(0.15, 0.15, 0.15))
-    result = lib.subtract(base, cutter)
+    levelset = lib.subtract(base, cutter)  # This IS the level set
 
-    # Save to plotfile
-    varnames = amr.Vector_string(["sdf"])
-    amr.write_single_level_plotfile("output/complex", result, varnames, geom, 0.0, 0)
+    # Save level set to plotfile (for solver input)
+    varnames = amr.Vector_string(["phi"])
+    amr.write_single_level_plotfile("output/complex_levelset", levelset, varnames, geom, 0.0, 0)
+    print("✅ Level set saved to: output/complex_levelset/")
 finally:
     amr.finalize()
 ```
 
-### Example 2: Chained Operations with Geometry API
+### Example 2: Chained Operations with Geometry API (Level Set Output)
 
 ```python
 from sdf3d import Sphere, Box, Union, sample_levelset
@@ -535,16 +670,18 @@ box = Box((0.2, 0.2, 0.2)).translate(0.3, 0, 0)
 # Combine
 combined = Union(sphere, box)
 
-# Sample
+# Generate level set
 bounds = ((-1, 1), (-1, 1), (-1, 1))
 res = (128, 128, 128)
-phi = sample_levelset(combined, bounds, res)
+phi = sample_levelset(combined, bounds, res)  # This IS the level set
 
-# Save
-np.save("output/combined.npy", phi)
+# Save level set to file
+np.save("output/combined_levelset.npy", phi)
+print("✅ Level set saved to: output/combined_levelset.npy")
+print(f"   Shape: {phi.shape}, Range: [{phi.min():.3f}, {phi.max():.3f}]")
 ```
 
-### Example 3: Rocket Shape (Multiple Operations)
+### Example 3: Rocket Shape (Level Set Output)
 
 ```python
 import amrex.space3d as amr
@@ -578,10 +715,13 @@ try:
     rocket = lib.union(rocket, fin1)
     rocket = lib.union(rocket, fin2)
     rocket = lib.union(rocket, fin3)
+    # rocket is now a MultiFab containing the level set φ(x,y,z)
 
-    # Save
-    varnames = amr.Vector_string(["sdf"])
-    amr.write_single_level_plotfile("output/rocket", rocket, varnames, geom, 0.0, 0)
+    # Save level set to plotfile
+    varnames = amr.Vector_string(["phi"])
+    amr.write_single_level_plotfile("output/rocket_levelset", rocket, varnames, geom, 0.0, 0)
+    print("✅ Rocket level set saved to: output/rocket_levelset/")
+    print("   Your solver can read this plotfile as the level set field!")
 finally:
     amr.finalize()
 ```
