@@ -11,6 +11,7 @@ from .geometry import (
     Subtraction,
 )
 from .grid import sample_levelset, save_npy
+from .amrex_sdf import SDFLibrary
 
 __all__ = [
     "Geometry",
@@ -25,4 +26,5 @@ __all__ = [
     "Subtraction",
     "sample_levelset",
     "save_npy",
+    "SDFLibrary",
 ]

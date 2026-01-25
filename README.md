@@ -28,6 +28,25 @@ is kept for structure, but Python identifiers cannot start with a digit):
 from sdf3d import Sphere, sample_levelset
 ```
 
+If you want AMReX-native output (MultiFab instead of NumPy), use
+`SDFLibrary`:
+
+```python
+import amrex.space3d as amr
+from sdf3d import SDFLibrary
+
+# Build AMReX grid objects
+real_box = amr.RealBox([-1, -1, -1], [1, 1, 1])
+domain = amr.Box(amr.IntVect(0, 0, 0), amr.IntVect(63, 63, 63))
+geom = amr.Geometry(domain, real_box, 0, [0, 0, 0])
+ba = amr.BoxArray(domain)
+ba.max_size(32)
+dm = amr.DistributionMapping(ba)
+
+lib = SDFLibrary(geom, ba, dm)
+mf = lib.sphere(center=(0.0, 0.0, 0.0), radius=0.3)
+```
+
 ### Quick correctness check (beginner friendly)
 
 Run this small script to verify the SDF output for a sphere:

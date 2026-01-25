@@ -9,6 +9,7 @@ from .geometry import (
     Union,
     Intersection,
     Subtraction,
+    SDFLibrary,
 )
 from .grid import sample_levelset, save_npy
 
@@ -23,6 +24,7 @@ __all__ = [
     "Union",
     "Intersection",
     "Subtraction",
+    "SDFLibrary",
     "sample_levelset",
     "save_npy",
 ]

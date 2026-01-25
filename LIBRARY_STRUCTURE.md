@@ -17,6 +17,10 @@ This project now separates the library into two folders:
   Utilities for sampling a geometry on a 3D grid and saving the level-set
   data to disk (e.g., `output/levelset.npy`).
 
+- `amrex_sdf.py`  
+  AMReX-native level-set generation. Creates and combines `MultiFab` fields
+  directly (solver-ready output).
+
 - `examples.py`  
   Minimal example showing how to build a composite geometry and generate a
   level-set field.
