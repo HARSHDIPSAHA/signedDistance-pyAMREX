@@ -21,6 +21,13 @@ formulas are referenced from
 python scripts/render_all_sdfs.py
 ```
 
+For library usage in Python, import the 3D API via `sdf3d` (the `3d/` folder
+is kept for structure, but Python identifiers cannot start with a digit):
+
+```python
+from sdf3d import Sphere, sample_levelset
+```
+
 ### 3D volume renders (yt)
 
 This uses yt volume rendering to make 3D snapshots and saves them to
