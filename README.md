@@ -12,21 +12,22 @@ formulas are referenced from
 ## Files
 
 - `sdf_lib.py`: numpy implementations of the SDF primitives and operators.
-- `render_all_sdfs.py`: builds a 2D AMReX grid, evaluates each SDF, and saves
-  images into `vis/`.
+- `scripts/`: visualization and plotfile utilities (optional).
+- `outputs/`: generated images (not required for the library).
 
 ## Run
 
 ```bash
-python render_all_sdfs.py
+python scripts/render_all_sdfs.py
 ```
 
 ### 3D volume renders (yt)
 
-This uses yt volume rendering to make 3D snapshots and saves them to `vis3d/`:
+This uses yt volume rendering to make 3D snapshots and saves them to
+`outputs/vis3d/`:
 
 ```bash
-python render_all_sdfs_3d.py
+python scripts/render_all_sdfs_3d.py
 ```
 
 Notes:
@@ -52,10 +53,10 @@ refinement) instead of the uniform grid used in `render_all_sdfs_3d.py`.
 
 ## Output
 
-Each SDF produces a `vis/<name>.png` visualization with a diverging colormap
-and the zero level-set contour drawn in black.
+Generated images are stored under `outputs/`:
 
-The 3D volume renders are saved to `vis3d/<name>.png`.
+- `outputs/vis/<name>.png` (2D slices)
+- `outputs/vis3d/<name>.png` (3D renders)
 
 ### Plotfiles + 3D snapshots (yt)
 
@@ -63,17 +64,17 @@ This workflow writes AMReX plotfiles for each SDF and then renders each
 plotfile to a PNG:
 
 ```bash
-python render_all_sdfs_plotfiles.py
+python scripts/render_all_sdfs_plotfiles.py
 ```
 
 Outputs:
 - `plotfiles/<name>/` (AMReX plotfiles)
-- `vis3d_plotfile/<name>.png` (volume renders)
+- `outputs/vis3d_plotfile/<name>.png` (renders)
 
 Notes:
 - Requires pyAMReX built in 3D and `yt` installed.
 
-## Color guide for `vis/` images
+## Color guide for `outputs/vis` images
 
 The PNGs use a diverging colormap:
 
@@ -82,7 +83,7 @@ The PNGs use a diverging colormap:
 - White/near zero: near the surface.
 - Black contour line: the zero level set (the shape boundary).
 
-For `vis3d/`, the volume render highlights values near the zero level set,
+For `outputs/vis3d`, the volume render highlights values near the zero level set,
 so the visible surface corresponds to the SDF = 0 boundary.
 
 ## How pyAMReX helps
@@ -94,7 +95,7 @@ an SDF on a structured domain and scale the work later if needed:
 - `DistributionMapping` assigns each tile to a compute resource.
 - `MultiFab` stores grid-aligned data (the SDF values) for each tile.
 
-In `render_all_sdfs.py`, the line below allocates the SDF storage:
+In `scripts/render_all_sdfs.py`, the line below allocates the SDF storage:
 
 ```python
 sdf_mf = amr.MultiFab(ba, dm, 1, 0)

@@ -15,6 +15,29 @@ except ImportError as exc:  # pragma: no cover - runtime environment specific
     raise SystemExit("yt not available (pip install yt)") from exc
 
 
+def _get_yt_render_backend():
+    try:
+        from yt.visualization.volume_rendering.api import Scene, SurfaceSource
+        return ("surface", Scene, SurfaceSource)
+    except Exception:
+        try:
+            from yt.visualization.volume_rendering.scene import Scene
+            from yt.visualization.volume_rendering.render_source import SurfaceSource
+            return ("surface", Scene, SurfaceSource)
+        except Exception:
+            pass
+    try:
+        from yt.visualization.volume_rendering.api import Scene
+        return ("volume", Scene, None)
+    except Exception as exc:
+        raise SystemExit(
+            "yt is installed but volume rendering API is unavailable"
+        ) from exc
+
+
+RENDER_MODE, Scene, SurfaceSource = _get_yt_render_backend()
+
+
 def build_grid(n=96, max_grid_size=32, prob_lo=None, prob_hi=None):
     if prob_lo is None:
         prob_lo = [-0.5, -0.5, -0.5]
@@ -51,10 +74,15 @@ def fill_multifab_3d(sdf_mf, geom, prob_lo, sdf_func):
         Z, Y, X = np.meshgrid(z, y, x, indexing="ij")
         p = sdf.vec3(X, Y, Z)
 
-        arr[:, :, :, 0, 0] = sdf_func(p)
+        if arr.ndim == 4:
+            arr[:, :, :, 0] = sdf_func(p)
+        else:
+            arr[:, :, :, 0, 0] = sdf_func(p)
 
 
 def write_plotfile(plotfile, mf, geom, varnames):
+    if hasattr(amr, "Vector_string") and not isinstance(varnames, amr.Vector_string):
+        varnames = amr.Vector_string(varnames)
     if hasattr(amr, "WriteSingleLevelPlotfile"):
         amr.WriteSingleLevelPlotfile(plotfile, mf, varnames, geom, 0.0, 0)
         return
@@ -77,26 +105,32 @@ def render_plotfile(plotfile, out_dir):
     ds = yt.load(plotfile)
     field = pick_yt_field(ds, "sdf")
 
-    ad = ds.all_data()
-    vmin = float(ad[field].min())
-    vmax = float(ad[field].max())
-    dx = float(ds.domain_width[0] / ds.domain_dimensions[0])
-    width = 2.0 * dx
-
-    sc = yt.create_scene(ds, field=field)
+    sc = Scene()
     sc.background = (0.0, 0.0, 0.0, 1.0)
-    source = sc[0]
-    source.set_log(False)
 
-    tf = yt.ColorTransferFunction((vmin, vmax))
-    tf.add_gaussian(0.0, width=width, height=[1.0, 0.9, 0.2, 1.0])
-    source.transfer_function = tf
+    if RENDER_MODE == "surface" and SurfaceSource is not None:
+        source = SurfaceSource(ds, field, 0.0)
+        source.color = (1.0, 0.85, 0.2, 1.0)
+        sc.add_source(source)
+    else:
+        ad = ds.all_data()
+        vmin = float(ad[field].min())
+        vmax = float(ad[field].max())
+        dx = float(ds.domain_width[0] / ds.domain_dimensions[0])
+        width = 0.25 * dx
+        source = yt.create_scene(ds, field=field)[0]
+        source.set_log(False)
+        tf = yt.ColorTransferFunction((vmin, vmax))
+        tf.add_gaussian(0.0, width=width, height=[1.0, 0.9, 0.2, 1.0])
+        source.transfer_function = tf
+        sc.add_source(source)
 
-    cam = sc.camera
+    cam = sc.add_camera(ds, lens_type="perspective")
     cam.focus = ds.domain_center
     cam.width = ds.domain_width
     cam.position = ds.domain_center + ds.domain_width * np.array([1.5, 1.5, 1.5])
     cam.switch_orientation()
+    cam.resolution = (1024, 1024)
 
     name = os.path.basename(plotfile.rstrip("/\\"))
     out_path = os.path.join(out_dir, f"{name}.png")
@@ -188,7 +222,7 @@ def main():
             return
 
         plot_dir = "plotfiles"
-        out_dir = "vis3d_plotfile"
+        out_dir = os.path.join("outputs", "vis3d_plotfile")
         os.makedirs(plot_dir, exist_ok=True)
         os.makedirs(out_dir, exist_ok=True)
 

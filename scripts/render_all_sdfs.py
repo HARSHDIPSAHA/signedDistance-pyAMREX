@@ -1,17 +1,79 @@
 import os
 
+import amrex.space2d as amr
+import matplotlib.pyplot as plt
 import numpy as np
-import yt
 
 import sdf_lib as sdf
 
 
-def build_volume(n=96, bounds=(-0.5, 0.5)):
-    lo, hi = bounds
-    coords = np.linspace(lo, hi, n, endpoint=False) + (hi - lo) / (2.0 * n)
-    z, y, x = np.meshgrid(coords, coords, coords, indexing="ij")
-    p = sdf.vec3(x, y, z)
-    return p
+def build_grid(n=192, max_grid_size=64):
+    prob_lo = [0.0, 0.0]
+    prob_hi = [1.0, 1.0]
+
+    real_box = amr.RealBox(prob_lo, prob_hi)
+    domain = amr.Box(np.array([0, 0]), np.array([n - 1, n - 1]))
+    geom = amr.Geometry(domain, real_box, 0, [0, 0])
+
+    ba = amr.BoxArray(domain)
+    ba.max_size(max_grid_size)
+    dm = amr.DistributionMapping(ba)
+    return geom, ba, dm
+
+
+def fill_multifab(sdf_mf, geom, sdf_func):
+    dx = geom.data().CellSize()
+    for mfi in sdf_mf:
+        arr = sdf_mf.array(mfi).to_numpy()
+        bx = mfi.validbox()
+        i_lo, j_lo = bx.lo_vect
+        i_hi, j_hi = bx.hi_vect
+
+        i = np.arange(i_lo, i_hi + 1)
+        j = np.arange(j_lo, j_hi + 1)
+
+        x = (i + 0.5) * dx[0]
+        y = (j + 0.5) * dx[1]
+
+        Y, X = np.meshgrid(y, x, indexing="ij")
+        p = sdf.vec3(X - 0.5, Y - 0.5, np.zeros_like(X))
+        arr[:, :, 0, 0] = sdf_func(p)
+
+
+def gather_full(sdf_mf, n):
+    full = np.zeros((n, n))
+    for mfi in sdf_mf:
+        arr = sdf_mf.array(mfi).to_numpy()
+        bx = mfi.validbox()
+        i_lo, j_lo = bx.lo_vect
+        i_hi, j_hi = bx.hi_vect
+        full[j_lo : j_hi + 1, i_lo : i_hi + 1] = arr[:, :, 0, 0]
+    return full
+
+
+def plot_and_save(full, name, out_dir):
+    lim = np.max(np.abs(full))
+    if lim == 0:
+        lim = 1e-6
+
+    plt.figure(figsize=(7, 6))
+    im = plt.imshow(
+        full,
+        origin="lower",
+        extent=[0, 1, 0, 1],
+        cmap="seismic",
+        vmin=-lim,
+        vmax=lim,
+    )
+    plt.colorbar(im, label="Signed Distance")
+    plt.contour(full, levels=[0.0], colors="black", linewidths=1.5, extent=[0, 1, 0, 1])
+    plt.title(name)
+    plt.xlabel("X")
+    plt.ylabel("Y")
+
+    path = os.path.join(out_dir, f"{name}.png")
+    plt.savefig(path, dpi=150)
+    plt.close()
 
 
 def make_cases():
@@ -91,45 +153,28 @@ def rotation_z(theta):
     return np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
 
 
-def render_volume(values, name, out_dir, bounds=(-0.5, 0.5)):
-    bbox = np.array([[bounds[0], bounds[1]], [bounds[0], bounds[1]], [bounds[0], bounds[1]]])
-    ds = yt.load_uniform_grid({"sdf": values.astype(np.float64)}, values.shape, bbox=bbox)
-
-    vmin = float(values.min())
-    vmax = float(values.max())
-    dx = (bounds[1] - bounds[0]) / values.shape[0]
-    width = 2.0 * dx
-
-    sc = yt.create_scene(ds, field="sdf")
-    sc.background = (0.0, 0.0, 0.0, 1.0)
-    source = sc[0]
-    source.set_log(False)
-
-    tf = yt.ColorTransferFunction((vmin, vmax))
-    tf.add_gaussian(0.0, width=width, height=[1.0, 0.9, 0.2, 1.0])
-    source.transfer_function = tf
-
-    cam = sc.camera
-    cam.focus = ds.domain_center
-    cam.width = ds.domain_width
-    cam.position = ds.domain_center + ds.domain_width * np.array([1.5, 1.5, 1.5])
-    cam.switch_orientation()
-
-    path = os.path.join(out_dir, f"{name}.png")
-    sc.save(path, sigma_clip=4.0)
-
-
 def main():
-    out_dir = "vis3d"
-    os.makedirs(out_dir, exist_ok=True)
+    amr.initialize([])
+    try:
+        if amr.Config.spacedim != 2:
+            print("ERROR: pyAMReX not built in 2D")
+            return
 
-    n = 96
-    p = build_volume(n=n)
+        out_dir = os.path.join("outputs", "vis")
+        os.makedirs(out_dir, exist_ok=True)
 
-    for name, sdf_func in make_cases():
-        values = sdf_func(p)
-        render_volume(values, name, out_dir)
-        print(f"Saved: {name}.png")
+        n = 192
+        geom, ba, dm = build_grid(n=n)
+        sdf_mf = amr.MultiFab(ba, dm, 1, 0)
+
+        for name, sdf_func in make_cases():
+            sdf_mf.set_val(0.0)
+            fill_multifab(sdf_mf, geom, sdf_func)
+            full = gather_full(sdf_mf, n)
+            plot_and_save(full, name, out_dir)
+            print(f"Saved: {name}.png")
+    finally:
+        amr.finalize()
 
 
 if __name__ == "__main__":
