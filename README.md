@@ -28,6 +28,38 @@ is kept for structure, but Python identifiers cannot start with a digit):
 from sdf3d import Sphere, sample_levelset
 ```
 
+### Quick correctness check (beginner friendly)
+
+Run this small script to verify the SDF output for a sphere:
+
+```bash
+python - << "PY"
+import numpy as np
+from sdf3d import Sphere, sample_levelset
+
+sphere = Sphere(0.3)
+bounds = ((-1.0, 1.0), (-1.0, 1.0), (-1.0, 1.0))
+res = (64, 64, 64)
+
+phi = sample_levelset(sphere, bounds, res)
+
+center = tuple(r // 2 for r in res)
+print("phi(center) ~ -0.3:", phi[center])
+print("phi(corner) > 0:", phi[0, 0, 0])
+print("any near zero:", (np.abs(phi) < 0.02).any())
+PY
+```
+
+Expected:
+- `phi(center)` is close to `-0.3`
+- `phi(corner)` is positive
+- `any near zero` is `True`
+
+Why `phi(center)` may not be exactly `-0.3`:
+the grid is cell-centered, so the "center cell" is slightly offset from
+`(0, 0, 0)`. If you want a value closer to `-0.3`, use an odd resolution
+such as `res = (65, 65, 65)`.
+
 ### 3D volume renders (yt)
 
 This uses yt volume rendering to make 3D snapshots and saves them to
@@ -139,3 +171,19 @@ plain terms:
 
 - All 3D SDFs are evaluated on the z = 0 slice for visualization.
 - `udTriangle` and `udQuad` are unsigned distance fields by definition.
+
+## Library Flow
+
+```
+User parameters / GUI
+        ↓
+SDF Geometry Library
+        ↓
+Compose shapes + operations
+        ↓
+Evaluate SDF on bounding box grid
+        ↓
+Output: ϕ(x, y, z) level-set data
+        ↓
+Solver reads it
+```
