@@ -149,6 +149,8 @@ def create_fragment_geometry(lib):
     fragment_radius = 7.15e-3  # 7.15 mm radius
     cylinder_height = 10e-3     # 10 mm cylinder
     cone_height = 5.56e-3       # 5.56 mm cone (total 15.56 mm)
+    # Cone angle: 20° half-angle (or 10° if "10/20" means full angle)
+    # Using 20° half-angle as per NATO spec
     cone_angle_deg = 20.0       # 20° cone half-angle
     
     # Convert cone angle to sin/cos for sdConeExact
@@ -165,38 +167,49 @@ def create_fragment_geometry(lib):
     print(f"    Cone angle: {cone_angle_deg}°")
     
     # Create cylinder (body of fragment)
-    # sdCylinder is aligned with y-axis (infinite)
+    # sdCylinder is aligned with y-axis (infinite along y)
     # We need to make it finite by intersecting with a box
     cylinder_infinite = Cylinder(axis_offset=[0.0, 0.0], radius=fragment_radius)
     # Create a box to limit cylinder height along y-axis
-    cylinder_box = Box(half_size=[fragment_radius*3, cylinder_height/2, fragment_radius*3])
+    # Box extends in x, y, z directions - y is the cylinder axis
+    cylinder_box = Box(half_size=[fragment_radius*2, cylinder_height/2, fragment_radius*2])
     cylinder_geom = Intersection(cylinder_infinite, cylinder_box)
-    # Rotate to align with z-axis (rotate 90° around x-axis)
+    # Rotate to align with z-axis (rotate 90° around x-axis: y -> z)
     cylinder_geom = cylinder_geom.rotate_x(np.pi/2)
     # Translate to position cylinder: base at z=0, top at z=cylinder_height
     cylinder_geom = cylinder_geom.translate(0.0, 0.0, cylinder_height/2)
     
-    # Create cone (tip of fragment)
-    # The cone must have base radius = fragment_radius to match cylinder
-    # For a 20° half-angle cone: tip_radius = base_radius - height * tan(angle)
-    # Calculate tip radius to maintain 20° angle
-    tip_radius = fragment_radius - cone_height * np.tan(cone_angle_rad)
-    tip_radius = max(0.0, tip_radius)  # Ensure non-negative
+    # Create smooth cone (tip of fragment) with 20° half-angle
+    # For a proper smooth conical-ended cylinder, the cone base must match cylinder radius
+    # For a 20° half-angle cone: base_radius = height * tan(20°)
+    # To get base_radius = 7.15mm: height_needed = 7.15 / tan(20°) ≈ 19.65mm
+    # But we only have 5.56mm, so we'll create a cone that extends properly
+    # and use the union to create a smooth connection
     
-    # Use sdCappedCone: creates a truncated cone (frustum)
-    # Parameters: p, h, r1 (tip radius), r2 (base radius)
-    import sdf_lib as sdf
-    def capped_cone_sdf(p):
-        return sdf.sdCappedCone(p, cone_height, tip_radius, fragment_radius)
+    # Calculate the height needed for cone to have base_radius = fragment_radius
+    cone_height_for_match = fragment_radius / np.tan(cone_angle_rad)
     
-    from sdf3d.geometry import Geometry
-    cone_geom = Geometry(capped_cone_sdf)
-    # Rotate to align with z-axis (rotate 90° around x-axis)
+    # Create smooth cone using sdConeExact with correct angle
+    # Use the calculated height so base radius matches cylinder
+    cone_geom = ConeExact(sincos=cone_sincos, height=cone_height_for_match)
+    
+    # Rotate to align with z-axis (rotate 90° around x-axis: y -> z)
     cone_geom = cone_geom.rotate_x(np.pi/2)
-    # Translate to position cone base exactly at cylinder top (z=cylinder_height)
+    
+    # Translate to position cone base at cylinder top
+    # The cone extends from z=0 to z=cone_height_for_match
+    # Position it so base connects to cylinder at z=cylinder_height
     cone_geom = cone_geom.translate(0.0, 0.0, cylinder_height)
     
-    print(f"    Cone tip radius: {tip_radius*1000:.2f} mm (calculated from 20° angle)")
+    # Now truncate the cone to the desired height (5.56mm) by intersecting with a box
+    # This creates a smooth cone that matches the cylinder radius
+    truncation_box = Box(half_size=[fragment_radius*2, fragment_radius*2, cone_height/2])
+    truncation_box = truncation_box.translate(0.0, 0.0, cylinder_height + cone_height/2)
+    cone_geom = Intersection(cone_geom, truncation_box)
+    
+    print(f"    Cone: smooth cone with {cone_angle_deg}° half-angle")
+    print(f"    Cone base radius: {fragment_radius*1000:.2f} mm (matches cylinder)")
+    print(f"    Cone extends to: {cone_height*1000:.2f} mm from cylinder top")
     
     # Union cylinder and cone
     fragment_geom = Union(cylinder_geom, cone_geom)
