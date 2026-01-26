@@ -30,8 +30,9 @@ Union(S1, S2) = min(SDF_S1, SDF_S2)
 - Surface (zero level set) exists where either sphere's surface is
 
 **Test Setup**:
-- Sphere 1: center (-0.3, 0, 0), radius 0.25
-- Sphere 2: center (0.3, 0, 0), radius 0.25
+- Sphere 1: center (-0.2, 0, 0), radius 0.3
+- Sphere 2: center (0.2, 0, 0), radius 0.3
+- Distance between centers: 0.4, so spheres overlap (each radius 0.3)
 
 **Verification**:
 - Checks for negative (inside) and positive (outside) values
@@ -149,6 +150,6 @@ Has positive values (outside): True
 - All examples use **AMReX MultiFab** for solver-native output
 - Elongation example uses the **geometry API** (numpy-based) for comparison
 - Numerical precision: differences < 1e-5 are considered exact matches
-- Grid resolution: 64×64×64 cells in domain [-1, 1]³
+- Grid resolution: 128×128×128 cells in domain [-1, 1]³ (higher resolution for smoother visualizations)
 - **3D visualizations require**: `pip install -e .[viz]` (installs plotly and scikit-image)
 - HTML files are saved to `outputs/vis3d_plotly/` and can be opened in any web browser

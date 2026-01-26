@@ -61,6 +61,35 @@ def save_3d_html(values, name, bounds, out_dir="outputs/vis3d_plotly"):
     # Shift vertices to actual coordinates
     verts += np.array([lo, lo, lo])
     
+    # Filter out small disconnected fragments (artifacts from low resolution)
+    if len(verts) > 0 and len(faces) > 0:
+        vertex_face_count = np.zeros(len(verts))
+        for face in faces:
+            vertex_face_count[face] += 1
+        
+        # Keep vertices that appear in at least 2 faces (removes tiny fragments)
+        min_faces = max(2, int(len(faces) / len(verts) * 0.1))  # Adaptive threshold
+        valid_vertices = vertex_face_count >= min_faces
+        
+        if valid_vertices.sum() > len(verts) * 0.3:  # Only filter if we keep >30% of vertices
+            # Remap vertex indices
+            vertex_map = np.full(len(verts), -1, dtype=int)
+            new_idx = 0
+            for i, valid in enumerate(valid_vertices):
+                if valid:
+                    vertex_map[i] = new_idx
+                    new_idx += 1
+            
+            # Filter faces: keep only faces where all vertices are valid
+            valid_faces = valid_vertices[faces].all(axis=1)
+            faces = faces[valid_faces]
+            
+            # Remap vertex indices in faces
+            faces = np.array([[vertex_map[v] for v in face] for face in faces])
+            
+            # Filter vertices
+            verts = verts[valid_vertices]
+    
     i, j, k = faces.T
     
     fig = go.Figure(data=[
@@ -94,9 +123,9 @@ def save_3d_html(values, name, bounds, out_dir="outputs/vis3d_plotly"):
 def main():
     amr.initialize([])
     try:
-        # Setup grid
+        # Setup grid (higher resolution for better visualization)
         real_box = amr.RealBox([-1, -1, -1], [1, 1, 1])
-        domain = amr.Box(amr.IntVect(0, 0, 0), amr.IntVect(63, 63, 63))
+        domain = amr.Box(amr.IntVect(0, 0, 0), amr.IntVect(127, 127, 127))  # 128^3 for smoother visualization
         geom = amr.Geometry(domain, real_box, 0, [0, 0, 0])
         ba = amr.BoxArray(domain)
         ba.max_size(32)
@@ -119,7 +148,7 @@ def main():
         
         # Generate 3D visualization
         if HAS_VIZ:
-            n = 64
+            n = 128  # Higher resolution to reduce artifacts
             full_array = gather_multifab_to_array(union, (n, n, n))
             save_3d_html(full_array, "union_example", (-1, 1))
 

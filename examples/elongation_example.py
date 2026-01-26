@@ -47,6 +47,36 @@ def save_3d_html(values, name, bounds, out_dir="outputs/vis3d_plotly"):
         values, level=0.0, spacing=(spacing, spacing, spacing)
     )
     verts += np.array([lo, lo, lo])
+    
+    # Filter out small disconnected fragments (artifacts from low resolution)
+    if len(verts) > 0 and len(faces) > 0:
+        vertex_face_count = np.zeros(len(verts))
+        for face in faces:
+            vertex_face_count[face] += 1
+        
+        # Keep vertices that appear in at least 2 faces (removes tiny fragments)
+        min_faces = max(2, int(len(faces) / len(verts) * 0.1))  # Adaptive threshold
+        valid_vertices = vertex_face_count >= min_faces
+        
+        if valid_vertices.sum() > len(verts) * 0.3:  # Only filter if we keep >30% of vertices
+            # Remap vertex indices
+            vertex_map = np.full(len(verts), -1, dtype=int)
+            new_idx = 0
+            for i, valid in enumerate(valid_vertices):
+                if valid:
+                    vertex_map[i] = new_idx
+                    new_idx += 1
+            
+            # Filter faces: keep only faces where all vertices are valid
+            valid_faces = valid_vertices[faces].all(axis=1)
+            faces = faces[valid_faces]
+            
+            # Remap vertex indices in faces
+            faces = np.array([[vertex_map[v] for v in face] for face in faces])
+            
+            # Filter vertices
+            verts = verts[valid_vertices]
+    
     i, j, k = faces.T
     
     fig = go.Figure(data=[
@@ -76,9 +106,9 @@ def main():
     sphere = Sphere(0.25)
     elongated = sphere.elongate(0.3, 0.0, 0.0)
 
-    # Sample on grid
+    # Sample on grid (higher resolution for better visualization)
     bounds = ((-1.0, 1.0), (-1.0, 1.0), (-1.0, 1.0))
-    res = (64, 64, 64)
+    res = (128, 128, 128)  # Higher resolution to reduce artifacts
     phi = sample_levelset(elongated, bounds, res)
 
     print(f"Min value (should be < 0, inside): {phi.min():.6f}")
