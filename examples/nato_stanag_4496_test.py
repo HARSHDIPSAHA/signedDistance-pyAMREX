@@ -173,17 +173,30 @@ def create_fragment_geometry(lib):
     cylinder_geom = Intersection(cylinder_infinite, cylinder_box)
     # Rotate to align with z-axis (rotate 90° around x-axis)
     cylinder_geom = cylinder_geom.rotate_x(np.pi/2)
-    # Translate to position cylinder base at origin
+    # Translate to position cylinder: base at z=0, top at z=cylinder_height
     cylinder_geom = cylinder_geom.translate(0.0, 0.0, cylinder_height/2)
     
     # Create cone (tip of fragment)
-    # sdConeExact: c = [sin(angle), cos(angle)], height
-    # Cone is aligned with y-axis, pointing in +y direction
-    cone_geom = ConeExact(sincos=cone_sincos, height=cone_height)
+    # The cone must have base radius = fragment_radius to match cylinder
+    # For a 20° half-angle cone: tip_radius = base_radius - height * tan(angle)
+    # Calculate tip radius to maintain 20° angle
+    tip_radius = fragment_radius - cone_height * np.tan(cone_angle_rad)
+    tip_radius = max(0.0, tip_radius)  # Ensure non-negative
+    
+    # Use sdCappedCone: creates a truncated cone (frustum)
+    # Parameters: p, h, r1 (tip radius), r2 (base radius)
+    import sdf_lib as sdf
+    def capped_cone_sdf(p):
+        return sdf.sdCappedCone(p, cone_height, tip_radius, fragment_radius)
+    
+    from sdf3d.geometry import Geometry
+    cone_geom = Geometry(capped_cone_sdf)
     # Rotate to align with z-axis (rotate 90° around x-axis)
     cone_geom = cone_geom.rotate_x(np.pi/2)
-    # Translate to position cone on top of cylinder
-    cone_geom = cone_geom.translate(0.0, 0.0, cylinder_height + cone_height/2)
+    # Translate to position cone base exactly at cylinder top (z=cylinder_height)
+    cone_geom = cone_geom.translate(0.0, 0.0, cylinder_height)
+    
+    print(f"    Cone tip radius: {tip_radius*1000:.2f} mm (calculated from 20° angle)")
     
     # Union cylinder and cone
     fragment_geom = Union(cylinder_geom, cone_geom)
