@@ -20,7 +20,7 @@ Mathematical Operations:
 - Step 3: union_result = union(base, capsule)
 - Step 4: rounder = sphere(center=(0,0.2,0), radius=0.6)  # Large sphere for rounding
 - Step 5: rounded = intersect(union_result, rounder)
-- Step 6: cutter = box(center=(0,-0.1,0), half_size=(0.15,0.15,0.15))
+- Step 6: cutter = box(center=(0,0,0), half_size=(0.1,0.1,0.1))
 - Step 7: final = subtract(rounded, cutter)
 """
 import sys
@@ -62,9 +62,20 @@ def save_3d_html(values, name, step_name, bounds, out_dir="outputs/vis3d_plotly"
     lo, hi = bounds
     spacing = (hi - lo) / values.shape[0]
     
-    verts, faces, _, _ = measure.marching_cubes(
-        values, level=0.0, spacing=(spacing, spacing, spacing)
-    )
+    # Check if level=0 is within the data range
+    if values.min() >= 0 or values.max() <= 0:
+        print(f"  ⚠️  {step_name}: Cannot extract isosurface - no zero crossing")
+        print(f"      Data range: [{values.min():.6f}, {values.max():.6f}]")
+        return
+    
+    try:
+        verts, faces, _, _ = measure.marching_cubes(
+            values, level=0.0, spacing=(spacing, spacing, spacing)
+        )
+    except ValueError as e:
+        print(f"  ⚠️  {step_name}: Error extracting isosurface - {e}")
+        print(f"      Data range: [{values.min():.6f}, {values.max():.6f}]")
+        return
     verts += np.array([lo, lo, lo])
     
     # Filter out small disconnected fragments (artifacts from low resolution)
@@ -216,13 +227,18 @@ def main():
         # STEP 5: Subtraction - Create a cavity/hole
         # ============================================================
         print("\n" + "-" * 70)
-        cutter = lib.box(center=(0.0, -0.1, 0.0), half_size=(0.15, 0.15, 0.15))
+        # Use a smaller cutter positioned to create a cavity without removing everything
+        cutter = lib.box(center=(0.0, 0.0, 0.0), half_size=(0.1, 0.1, 0.1))  # Smaller, centered
         final = lib.subtract(rounded, cutter)
         print_step_info(5, "Subtraction (Cavity)", final,
-                       "Subtract small box to create internal cavity")
+                       "Subtract small box(center=(0,0,0), half_size=0.1) to create internal cavity")
         if HAS_VIZ:
             full_array = gather_multifab_to_array(final, (n, n, n))
-            save_3d_html(full_array, "complex_example", "step5", bounds)
+            # Check if there's a valid isosurface before trying to extract it
+            if full_array.min() < 0 and full_array.max() > 0:
+                save_3d_html(full_array, "complex_example", "step5", bounds)
+            else:
+                print(f"  ⚠️  Step 5: No isosurface to visualize (all values are {'positive' if full_array.min() >= 0 else 'negative'})")
         
         # ============================================================
         # FINAL RESULT
@@ -247,7 +263,12 @@ def main():
         
         if HAS_VIZ:
             full_array = gather_multifab_to_array(final, (n, n, n))
-            save_3d_html(full_array, "complex_example", "final", bounds)
+            # Check if there's a valid isosurface
+            if full_array.min() < 0 and full_array.max() > 0:
+                save_3d_html(full_array, "complex_example", "final", bounds)
+            else:
+                print(f"  ⚠️  Final: No isosurface to visualize (all values are {'positive' if full_array.min() >= 0 else 'negative'})")
+                print(f"      Data range: [{full_array.min():.6f}, {full_array.max():.6f}]")
         
         print("\n" + "=" * 70)
         print("✅ COMPLEX EXAMPLE COMPLETE")

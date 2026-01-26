@@ -42,10 +42,10 @@ This document describes what the final shape should look like after all operatio
 
 ### Step 5: Subtraction (Cavity)
 - **Shape**: Rounded shape with a cavity
-- **Cutter Box**: Center at (0, -0.1, 0), half_size = (0.15, 0.15, 0.15)
+- **Cutter Box**: Center at (0, 0, 0), half_size = (0.1, 0.1, 0.1)
 - **Effect**: 
-  - A rectangular hole/cavity is cut out from the lower center
-  - The cavity is 0.3×0.3×0.3 units
+  - A rectangular hole/cavity is cut out from the center
+  - The cavity is 0.2×0.2×0.2 units (smaller to preserve material)
   - Creates an internal void in the shape
 - **Appearance**: 
   - Same as step 4, but with a visible hole/cavity
