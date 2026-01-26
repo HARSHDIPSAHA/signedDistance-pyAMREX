@@ -2,16 +2,16 @@
 Union Example: Two overlapping spheres
 
 Mathematical expectation:
-- Two spheres: S1 at (-0.3, 0, 0) radius 0.25, S2 at (0.3, 0, 0) radius 0.25
+- Two overlapping spheres: S1 at (-0.2, 0, 0) radius 0.3, S2 at (0.2, 0, 0) radius 0.3
 - Union = min(S1, S2) at each point
 - At origin (0,0,0):
-  - S1 distance = sqrt(0.3^2) - 0.25 = 0.3 - 0.25 = 0.05 (outside)
-  - S2 distance = sqrt(0.3^2) - 0.25 = 0.05 (outside)
-  - Union = min(0.05, 0.05) = 0.05 (outside, as expected)
-- At (-0.3, 0, 0) (center of S1):
-  - S1 distance = 0 - 0.25 = -0.25 (inside)
-  - S2 distance = sqrt(0.6^2) - 0.25 = 0.6 - 0.25 = 0.35 (outside)
-  - Union = min(-0.25, 0.35) = -0.25 (inside, as expected)
+  - S1 distance = sqrt(0.2^2) - 0.3 = 0.2 - 0.3 = -0.1 (inside)
+  - S2 distance = sqrt(0.2^2) - 0.3 = -0.1 (inside)
+  - Union = min(-0.1, -0.1) = -0.1 (inside, in overlap region)
+- At (-0.2, 0, 0) (center of S1):
+  - S1 distance = 0 - 0.3 = -0.3 (inside)
+  - S2 distance = sqrt(0.4^2) - 0.3 = 0.4 - 0.3 = 0.1 (outside)
+  - Union = min(-0.3, 0.1) = -0.3 (inside, as expected)
 """
 import sys
 import os
@@ -104,9 +104,9 @@ def main():
 
         lib = SDFLibrary(geom, ba, dm)
 
-        # Create two overlapping spheres
-        s1 = lib.sphere(center=(-0.3, 0.0, 0.0), radius=0.25)
-        s2 = lib.sphere(center=(0.3, 0.0, 0.0), radius=0.25)
+        # Create two overlapping spheres (centers closer so they merge)
+        s1 = lib.sphere(center=(-0.2, 0.0, 0.0), radius=0.3)
+        s2 = lib.sphere(center=(0.2, 0.0, 0.0), radius=0.3)
         union = lib.union(s1, s2)
 
         # Gather values for verification
@@ -134,11 +134,11 @@ def main():
         print(f"Has near-zero (surface): {(np.abs(phi) < 0.05).any()}")
 
         # Mathematical verification at origin
-        # At (0,0,0): distance to S1 center = 0.3, so S1 SDF = 0.3 - 0.25 = 0.05
-        # Similarly S2 SDF = 0.05, so union = min(0.05, 0.05) = 0.05
-        # We expect some cells near origin to have values around 0.05
-        near_origin = (np.abs(phi - 0.05) < 0.1).any()
-        print(f"Has values near expected origin value (0.05): {near_origin}")
+        # At (0,0,0): distance to S1 center = 0.2, so S1 SDF = 0.2 - 0.3 = -0.1
+        # Similarly S2 SDF = -0.1, so union = min(-0.1, -0.1) = -0.1
+        # We expect some cells near origin to have negative values (inside overlap)
+        near_origin = (np.abs(phi + 0.1) < 0.1).any()
+        print(f"Has values near expected origin value (-0.1, inside overlap): {near_origin}")
 
         # Success criteria
         success = (
