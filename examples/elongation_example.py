@@ -25,6 +25,47 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import numpy as np
 from sdf3d import Sphere, sample_levelset
 
+try:
+    from skimage import measure
+    import plotly.graph_objects as go
+    HAS_VIZ = True
+except ImportError:
+    HAS_VIZ = False
+    print("⚠️  plotly/scikit-image not available, skipping 3D visualization")
+
+
+def save_3d_html(values, name, bounds, out_dir="outputs/vis3d_plotly"):
+    """Generate interactive 3D HTML visualization using plotly"""
+    if not HAS_VIZ:
+        return
+    
+    os.makedirs(out_dir, exist_ok=True)
+    lo, hi = bounds
+    spacing = (hi - lo) / values.shape[0]
+    
+    verts, faces, _, _ = measure.marching_cubes(
+        values, level=0.0, spacing=(spacing, spacing, spacing)
+    )
+    verts += np.array([lo, lo, lo])
+    i, j, k = faces.T
+    
+    fig = go.Figure(data=[
+        go.Mesh3d(
+            x=verts[:, 2], y=verts[:, 1], z=verts[:, 0],
+            i=i, j=j, k=k, opacity=1.0, color='limegreen', flatshading=True
+        )
+    ])
+    
+    fig.update_layout(
+        title=f"{name} (SDF=0 isosurface)",
+        scene=dict(xaxis_title="X", yaxis_title="Y", zaxis_title="Z", aspectmode="cube"),
+        margin=dict(l=0, r=0, b=0, t=40)
+    )
+    
+    out_path = os.path.join(out_dir, f"{name}_3d.html")
+    fig.write_html(out_path)
+    print(f"✅ Interactive 3D visualization: {out_path}")
+
 
 def main():
     print("=" * 60)
@@ -80,6 +121,10 @@ def main():
     else:
         print("❌ ELONGATION TEST FAILED")
     print("=" * 60)
+    
+    # Generate 3D visualization
+    if HAS_VIZ:
+        save_3d_html(phi, "elongation_example", bounds[0])
 
 
 if __name__ == "__main__":

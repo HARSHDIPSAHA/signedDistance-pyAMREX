@@ -115,11 +115,17 @@ Then: SDF_elongated = SDF_sphere(q)
 
 ## Understanding the Output
 
-Each example prints:
-- **Min/Max values**: Range of the SDF field
-- **Has negative/positive**: Confirms inside/outside regions exist
-- **Mathematical verification**: Compares computed result with expected formula
-- **Pass/Fail status**: ✅ or ❌ based on correctness checks
+Each example:
+1. **Prints verification results**:
+   - Min/Max values: Range of the SDF field
+   - Has negative/positive: Confirms inside/outside regions exist
+   - Mathematical verification: Compares computed result with expected formula
+   - Pass/Fail status: ✅ or ❌ based on correctness checks
+
+2. **Generates interactive 3D HTML visualization** (if plotly/scikit-image installed):
+   - Saved to `outputs/vis3d_plotly/<example_name>_3d.html`
+   - Open in a web browser to view and rotate the 3D isosurface
+   - Shows the SDF=0 surface (geometry boundary)
 
 ## Expected Output Format
 
@@ -144,3 +150,5 @@ Has positive values (outside): True
 - Elongation example uses the **geometry API** (numpy-based) for comparison
 - Numerical precision: differences < 1e-5 are considered exact matches
 - Grid resolution: 64×64×64 cells in domain [-1, 1]³
+- **3D visualizations require**: `pip install -e .[viz]` (installs plotly and scikit-image)
+- HTML files are saved to `outputs/vis3d_plotly/` and can be opened in any web browser

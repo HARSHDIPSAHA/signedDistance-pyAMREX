@@ -2,9 +2,29 @@
 
 Complete reference guide for using the Signed Distance Function (SDF) library with pyAMReX.
 
+## Installation
+
+```bash
+# Basic installation (numpy only)
+pip install -e .
+
+# With visualization support (plotly, matplotlib, scikit-image)
+pip install -e .[viz]
+
+# With AMReX support (if available)
+pip install -e .[amrex]
+
+# All features
+pip install -e .[viz,amrex]
+```
+
+**Note**: The library provides both **2D** (`sdf2d`) and **3D** (`sdf3d`) APIs. Both are installed together.
+
 ## Table of Contents
 
-1. [Quick Start](#quick-start)
+1. [Installation](#installation)
+2. [Quick Start](#quick-start)
+3. [2D vs 3D APIs](#2d-vs-3d-apis)
 2. [Importing the Library](#importing-the-library)
 3. [AMReX MultiFab Mode (Solver-Native)](#amrex-multifab-mode-solver-native)
 4. [Geometry API Mode (NumPy Arrays)](#geometry-api-mode-numpy-arrays)
@@ -15,6 +35,21 @@ Complete reference guide for using the Signed Distance Function (SDF) library wi
 9. [Complete Examples](#complete-examples)
 
 ---
+
+## 2D vs 3D APIs
+
+This library provides **two separate APIs**:
+
+- **`sdf2d`**: 2D signed distance functions (circles, boxes, polygons, etc.)
+- **`sdf3d`**: 3D signed distance functions (spheres, boxes, torus, etc.)
+
+Both APIs follow the same design pattern:
+- Geometry objects (Circle, Sphere, Box, etc.)
+- Boolean operations (Union, Intersection, Subtraction)
+- AMReX MultiFab support (`SDFLibrary2D`, `SDFLibrary`)
+- NumPy array sampling (`sample_levelset_2d`, `sample_levelset`)
+
+This documentation focuses on **3D** (`sdf3d`). For 2D usage, see the `sdf2d` module docstring or examples in `2d/examples_2d.py`.
 
 ## Quick Start
 

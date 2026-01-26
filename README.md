@@ -9,6 +9,27 @@ boxes, distribute those boxes, and store the SDF values in a `MultiFab`.
 formulas are referenced from
 [iquilezles.org](https://iquilezles.org/articles/distfunctions/).
 
+## Installation
+
+See **[INSTALLATION.md](INSTALLATION.md)** for detailed installation instructions.
+
+**Quick install:**
+```bash
+# Basic
+pip install -e .
+
+# With visualization (plotly, matplotlib, scikit-image)
+pip install -e .[viz]
+
+# With AMReX support
+pip install -e .[amrex]
+
+# All features
+pip install -e .[viz,amrex]
+```
+
+After installation, both **2D** (`sdf2d`) and **3D** (`sdf3d`) APIs are available.
+
 ## Documentation
 
 - **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)**: Complete API reference with all functions, operations, and examples
@@ -27,11 +48,16 @@ formulas are referenced from
 python scripts/render_all_sdfs.py
 ```
 
-For library usage in Python, import the 3D API via `sdf3d` (the `3d/` folder
-is kept for structure, but Python identifiers cannot start with a digit):
+For library usage in Python:
 
+**3D API** (import via `sdf3d`):
 ```python
-from sdf3d import Sphere, sample_levelset
+from sdf3d import Sphere, sample_levelset, SDFLibrary
+```
+
+**2D API** (import via `sdf2d`):
+```python
+from sdf2d import Circle, Box2D, sample_levelset_2d, SDFLibrary2D
 ```
 
 If you want AMReX-native output (MultiFab instead of NumPy), use
