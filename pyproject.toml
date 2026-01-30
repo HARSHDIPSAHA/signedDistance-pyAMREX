@@ -1,10 +1,53 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "pysdf"
+name = "sdf-library"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
-requires-python = ">=3.13"
+description = "2D and 3D Signed Distance Function library with AMReX integration"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.8"
+authors = [
+    { name = "Harshdip Saha", email = "harshdip.saha.ug23@nsut.ac.in" }
+]
+keywords = ["sdf", "signed-distance", "level-set", "geometry", "amrex", "2d", "3d"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Physics",
+]
 dependencies = [
-    "numpy>=2.4.1",
-    "yt>=4.4.2",
+    "numpy>=1.20.0",
+]
+
+[project.optional-dependencies]
+# amrex = [
+#    "amrex>=23.0",
+# ]
+viz = [
+    "matplotlib>=3.5.0",
+    "plotly>=5.0.0",
+    "scikit-image>=0.19.0",
+]
+dev = [
+    "pytest>=7.0",
+    "black",
+    "flake8",
+]
+
+[project.urls]
+Homepage = "https://github.com/HARSHDIPSAHA/pySdf"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[dependency-groups]
+dev = [
+    "yt>=4.2.1",
 ]

@@ -9,6 +9,16 @@ boxes, distribute those boxes, and store the SDF values in a `MultiFab`.
 formulas are referenced from
 [iquilezles.org](https://iquilezles.org/articles/distfunctions/).
 
+## Intent
+
+The goal is to act like a small CAD-like compiler:
+
+User geometry and operations  
+→ Signed Distance Function  
+→ Sampled level-set field on a bounding box grid
+
+Visualization is optional and treated as post-processing.
+
 ## Installation
 
 See **[INSTALLATION.md](INSTALLATION.md)** for detailed installation instructions.
