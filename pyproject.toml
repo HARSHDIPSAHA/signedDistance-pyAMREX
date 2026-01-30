@@ -24,12 +24,10 @@ classifiers = [
 ]
 dependencies = [
     "numpy>=1.20.0",
+    "amrex>=23.0",
 ]
 
 [project.optional-dependencies]
-# amrex = [
-#    "amrex>=23.0",
-# ]
 viz = [
     "matplotlib>=3.5.0",
     "plotly>=5.0.0",

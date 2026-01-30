@@ -19,9 +19,9 @@ setup(
     python_requires=">=3.8",
     install_requires=[
         "numpy>=1.20.0",
+        "amrex>=23.0",
     ],
     extras_require={
-        "amrex": ["amrex>=23.0"],
         "viz": ["matplotlib>=3.5.0", "plotly>=5.0.0", "scikit-image>=0.19.0"],
         "dev": ["pytest>=7.0", "black", "flake8"],
     },

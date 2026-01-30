@@ -1,19 +1,9 @@
-# Installation Guide
-
-## Quick Install
-
 ```bash
 # Basic installation (numpy only)
 pip install -e .
 
 # With visualization support (plotly, matplotlib, scikit-image)
 pip install -e .[viz]
-
-# With AMReX support (if available)
-pip install -e .[amrex]
-
-# All features
-pip install -e .[viz,amrex]
 ```
 
 ## What Gets Installed
@@ -35,16 +25,6 @@ from sdf2d import Circle, Box2D, Union2D, sample_levelset_2d, SDFLibrary2D
 # 3D API
 from sdf3d import Sphere, Box, Union, sample_levelset, SDFLibrary
 ```
-
-## Dependencies
-
-### Required
-- `numpy>=1.20.0` (always installed)
-
-### Optional
-- **Visualization** (`[viz]`): `matplotlib`, `plotly`, `scikit-image`
-- **AMReX** (`[amrex]`): `amrex>=23.0` (if available)
-- **Development** (`[dev]`): `pytest`, `black`, `flake8`
 
 ## Verification
 
