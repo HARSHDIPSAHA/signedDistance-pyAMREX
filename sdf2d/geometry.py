@@ -3,7 +3,16 @@ from ._loader import load_module
 
 # Load implementations
 _geom = load_module("sdf2d._geom", "2d/geometry_2d.py")
-_amrex = load_module("sdf2d._amrex", "2d/amrex_sdf_2d.py")
+
+# Try to load AMReX-dependent modules, but make them optional
+try:
+    _amrex = load_module("sdf2d._amrex", "2d/amrex_sdf_2d.py")
+    SDFLibrary2D = _amrex.SDFLibrary2D
+    _HAS_AMREX = True
+except ImportError:
+    # AMReX not available, SDFLibrary2D will not be available
+    SDFLibrary2D = None
+    _HAS_AMREX = False
 
 # Base class
 Geometry2D = _geom.Geometry2D
@@ -70,9 +79,6 @@ Union2D = _geom.Union2D
 Intersection2D = _geom.Intersection2D
 Subtraction2D = _geom.Subtraction2D
 
-# AMReX integration
-SDFLibrary2D = _amrex.SDFLibrary2D
-
 __all__ = [
     # Base
     "Geometry2D",
@@ -138,7 +144,7 @@ __all__ = [
     "Union2D",
     "Intersection2D",
     "Subtraction2D",
-    
-    # AMReX
-    "SDFLibrary2D",
 ]
+
+if _HAS_AMREX:
+    __all__.append("SDFLibrary2D")

@@ -100,6 +100,11 @@ from .geometry import (
 )
 
 from .grid import sample_levelset_2d, save_npy
+from ._loader import load_module
+
+# Load visualization module
+_viz = load_module("sdf2d._viz", "2d/visualization_2d.py")
+save_levelset_html_2d = _viz.save_levelset_html_2d
 
 __version__ = "0.1.0"
 
@@ -175,4 +180,5 @@ __all__ = [
     # Grid utilities
     "sample_levelset_2d",
     "save_npy",
+    "save_levelset_html_2d",
 ]
