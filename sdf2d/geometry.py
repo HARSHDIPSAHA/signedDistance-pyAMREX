@@ -1,4 +1,5 @@
 """2D geometry primitives and operations."""
+
 from ._loader import load_module
 
 # Load implementations
@@ -82,7 +83,6 @@ Subtraction2D = _geom.Subtraction2D
 __all__ = [
     # Base
     "Geometry2D",
-    
     # Basic shapes
     "Circle",
     "Box2D",
@@ -92,33 +92,27 @@ __all__ = [
     "Rhombus2D",
     "Trapezoid2D",
     "Parallelogram2D",
-    
     # Triangles
     "EquilateralTriangle2D",
     "TriangleIsosceles2D",
     "Triangle2D",
-    
     # Capsules
     "UnevenCapsule2D",
-    
     # Regular polygons
     "Pentagon2D",
     "Hexagon2D",
     "Octogon2D",
     "NGon2D",
-    
     # Stars
     "Hexagram2D",
     "Star5",
     "Star",
-    
     # Arcs and sectors
     "Pie2D",
     "CutDisk2D",
     "Arc2D",
     "Ring2D",
     "Horseshoe2D",
-    
     # Special shapes
     "Vesica2D",
     "Moon2D",
@@ -127,7 +121,6 @@ __all__ = [
     "Heart2D",
     "Cross2D",
     "RoundedX2D",
-    
     # Complex shapes
     "Polygon2D",
     "Ellipse2D",
@@ -139,7 +132,6 @@ __all__ = [
     "Stairs2D",
     "QuadraticCircle2D",
     "Hyperbola2D",
-    
     # Boolean operations
     "Union2D",
     "Intersection2D",
