@@ -1,3 +1,7 @@
+# Installation Guide
+
+## Quick Install
+
 ```bash
 # Basic installation
 pip install -e .
