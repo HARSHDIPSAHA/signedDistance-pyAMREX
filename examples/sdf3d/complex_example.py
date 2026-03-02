@@ -1,18 +1,3 @@
-"""Complex example: chaining Union, Elongation, Intersection, and Subtraction.
-
-Demonstrates: Box3D, Sphere3D, union(), intersect(), subtract(), elongate(),
-              save_png() for each build step.
-Output:       examples/sdf3d/output/complex_example_step*.png
-              examples/sdf3d/output/complex_example_final.png
-
-Build sequence
---------------
-1. Base box at origin
-2. Capsule: sphere elongated along X
-3. Union: box union capsule
-4. Rounded top: intersect with a large sphere offset in +Y
-5. Cavity: subtract a small central box
-"""
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))

@@ -1,18 +1,3 @@
-"""NATO STANAG-4496 fragment impact geometry.
-
-Demonstrates: NATOFragment, Box3D, union(), translate(), rotate_y(), save_png()
-Output:       examples/sdf3d/output/nato_fragment.png
-              examples/sdf3d/output/nato_impact_scene.png
-
-Scene setup
------------
-1. Build the fragment geometry (cylinder + sharp cone nose) via NATOFragment.
-2. Build a 50 mm target block.
-3. Position the fragment 20 mm in front of the target at a 5 deg yaw angle.
-4. Union fragment + target into a single SDF for the solver.
-
-No AMReX required — a mock library returns the Geometry3D object directly.
-"""
 from pathlib import Path
 import sys
 import numpy as np

@@ -1,8 +1,3 @@
-"""Union of two overlapping spheres.
-
-Demonstrates: Sphere3D, union(), save_png()
-Output:       examples/sdf3d/output/union_example.png
-"""
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))

@@ -1,12 +1,3 @@
-"""Subtraction: sphere with a spherical cavity.
-
-Demonstrates: Sphere3D, subtract(), save_png()
-Output:       examples/sdf3d/output/subtraction_example.png
-
-Argument order reminder:
-    opSubtraction(d1, d2) = max(-d1, d2)   where d1=CUTTER, d2=BASE
-    base.subtract(cutter)                   fluent form
-"""
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))

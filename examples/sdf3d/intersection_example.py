@@ -1,8 +1,3 @@
-"""Intersection of two overlapping spheres.
-
-Demonstrates: Sphere3D, intersect(), save_png()
-Output:       examples/sdf3d/output/intersection_example.png
-"""
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
