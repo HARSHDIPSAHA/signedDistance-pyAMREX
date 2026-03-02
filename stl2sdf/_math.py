@@ -3,19 +3,12 @@
 All symbols here are private (underscore-prefixed).  Users should import
 only from :mod:`stl2sdf.geometry`.
 
-Algorithms
-----------
-Unsigned distance — Christer Ericson's Voronoi-region closest-point method
-    (Real-Time Collision Detection §5.1.5).  Six dot products d1–d6 and three
-    cross-term determinants va/vb/vc identify one of seven regions.
-    ``np.select`` picks the formula; denominators are guarded with
-    ``np.maximum(..., 1e-30)`` because np.select evaluates every branch.
+Unsigned distance uses Closest point on triangle using Voronoi region tests (Ericson’s algorithm).
+Sign uses Möller–Trumbore ray casting.
 
-Sign — Möller–Trumbore ray casting.
-    A ray from each query point in a fixed irrational direction counts
-    triangle crossings.  Odd count → inside (phi < 0).  Requires a
-    watertight mesh; sign is undefined near gaps.
-
+How ``_triangles_to_sdf`` works: one pass over all F triangles accumulates
+sq_min[i] (minimum squared distance, sqrt deferred to end) and hits[i] (forward
+ray intersection parity count).  phi[i] = sign(hits[i]) * sqrt(sq_min[i]).
 Complexity: O(F × N) where F = triangles, N = query points.
 """
 
@@ -28,18 +21,16 @@ from typing import Optional, Union
 
 import numpy as np
 
-# ---------------------------------------------------------------------------
-# Fixed ray direction — irrational components avoid axis-aligned degeneracies
-# ---------------------------------------------------------------------------
+_DENOM_EPS:    float = 1e-30  # guards np.select branches that are always evaluated
+_PARALLEL_EPS: float = 1e-10  # |det| below this → ray parallel to triangle plane
+_ORIGIN_EPS:   float = 1e-10  # t ≤ this → intersection at or behind the ray origin
+
+# Irrational components avoid axis-aligned degeneracies
 _RAY_DIR: np.ndarray = np.array(
     [sqrt(2) - 1.0, sqrt(3) - 1.0, 1.0 / sqrt(3)], dtype=np.float64
 )
 _RAY_DIR = _RAY_DIR / np.linalg.norm(_RAY_DIR)
 
-
-# ---------------------------------------------------------------------------
-# STL parsing
-# ---------------------------------------------------------------------------
 
 def _stl_to_triangles(path: Union[str, Path]) -> np.ndarray:
     """Read an STL file and return its triangles as a (F, 3, 3) float64 array.
@@ -75,92 +66,121 @@ def _ascii_stl_to_triangles(text: str) -> np.ndarray:
     return np.array(verts, dtype=np.float64).reshape(-1, 3, 3)
 
 
-# ---------------------------------------------------------------------------
-# Unsigned distance — Ericson Voronoi-region method
-# ---------------------------------------------------------------------------
-
+# Closest point on triangle using Voronoi region tests (Ericson’s algorithm).
+# taken from https://alexanderfabisch.github.io/distance3d/_modules/distance3d/distance/_triangle.html#point_to_triangle
+# but vectorized for N query points on a single triangle
 def _triangle_sq_dist(P: np.ndarray, tri: np.ndarray) -> np.ndarray:
     """Squared distance from each point in P (N, 3) to triangle tri (3, 3)."""
     A, B, C = tri[0], tri[1], tri[2]
-    AB = B - A
-    AC = C - A
-    AP = P - A
 
-    d1 = AP @ AB
-    d2 = AP @ AC
-    d3 = (P - B) @ AB
-    d4 = (P - B) @ AC
-    d5 = (P - C) @ AB
-    d6 = (P - C) @ AC
+    AB = B - A          # (3,)
+    AC = C - A          # (3,)
+    AP = P - A          # (N, 3)
+    BP = P - B          # (N, 3)
+    CP = P - C          # (N, 3)
 
+    # d1–d6: projections of the vertex-to-point vectors onto AB and AC.
+    # d1, d2 from A's perspective; d3, d4 from B's; d5, d6 from C's.
+    d1 = AP @ AB    # (N,)
+    d2 = AP @ AC    # (N,)
+    d3 = BP @ AB    # (N,)
+    d4 = BP @ AC    # (N,)
+    d5 = CP @ AB    # (N,)
+    d6 = CP @ AC    # (N,)
+
+    # Cross-term determinants: proportional to the barycentric weight of the
+    # opposite vertex. Negative vc → P outside edge AB; negative vb → outside
+    # AC; negative va → outside BC.
     vc = d1 * d4 - d3 * d2
     vb = d5 * d2 - d1 * d6
     va = d3 * d6 - d5 * d4
-
-    denom_uv = np.maximum(va + vb + vc, 1e-30)
-    denom_u  = np.maximum(d1 - d3, 1e-30)
-    denom_v  = np.maximum((d4 - d3) + (d5 - d6), 1e-30)
-
-    cond_A  = (d1 <= 0.0) & (d2 <= 0.0)
-    cond_B  = (d3 >= 0.0) & (d4 <= d3)
-    cond_C  = (d6 >= 0.0) & (d5 <= d6)
-    cond_AB = (vc <= 0.0) & (d1 >= 0.0) & (d3 <= 0.0)
-    cond_AC = (vb <= 0.0) & (d2 >= 0.0) & (d6 <= 0.0)
-    cond_BC = (va <= 0.0) & ((d4 - d3) >= 0.0) & ((d5 - d6) >= 0.0)
 
     def _sq(cp):
         diff = P - cp
         return (diff * diff).sum(axis=-1)
 
-    t_AB  = np.clip(d1 / denom_u, 0.0, 1.0)
-    cp_AB = A + t_AB[:, None] * AB
+    # Check if point in vertex region outside A
+    cond_A = (d1 <= 0.0) & (d2 <= 0.0)
 
-    t_AC  = np.clip(d2 / np.maximum(d2 - d6, 1e-30), 0.0, 1.0)
-    cp_AC = A + t_AC[:, None] * AC
+    # Check if point in vertex region outside B
+    cond_B = (d3 >= 0.0) & (d4 <= d3)
 
-    t_BC  = np.clip((d4 - d3) / denom_v, 0.0, 1.0)
-    cp_BC = B + t_BC[:, None] * (C - B)
+    # Check if point in vertex region outside C
+    cond_C = (d6 >= 0.0) & (d5 <= d6)
 
-    w_v    = vb / denom_uv
-    w_w    = vc / denom_uv
-    cp_int = A + np.clip(w_v, 0.0, 1.0)[:, None] * AC + np.clip(w_w, 0.0, 1.0)[:, None] * AB
+    # Check if point in edge region of AB
+    # vc ≤ 0 (outside AB), d1 ≥ 0 (past A), d3 ≤ 0 (not yet past B).
+    # t = d1 / (d1 - d3), clamped to [0, 1].
+    cond_AB = (vc <= 0.0) & (d1 >= 0.0) & (d3 <= 0.0)
+    t_AB    = d1 / np.maximum(d1 - d3, _DENOM_EPS)
+    cp_AB   = A + np.clip(t_AB, 0.0, 1.0)[:, None] * AB
+
+    # Check if point in edge region of AC
+    # Symmetric to AB. t = d2 / (d2 - d6), clamped to [0, 1].
+    cond_AC = (vb <= 0.0) & (d2 >= 0.0) & (d6 <= 0.0)
+    t_AC    = d2 / np.maximum(d2 - d6, _DENOM_EPS)
+    cp_AC   = A + np.clip(t_AC, 0.0, 1.0)[:, None] * AC
+
+    # Check if point in edge region of BC
+    # va ≤ 0, (d4-d3) ≥ 0 (past B), (d5-d6) ≥ 0 (not yet past C).
+    # t = (d4-d3) / ((d4-d3) + (d5-d6)), clamped to [0, 1].
+    cond_BC = (va <= 0.0) & ((d4 - d3) >= 0.0) & ((d5 - d6) >= 0.0)
+    t_BC    = (d4 - d3) / np.maximum((d4 - d3) + (d5 - d6), _DENOM_EPS)
+    cp_BC   = B + np.clip(t_BC, 0.0, 1.0)[:, None] * (C - B)
+
+    # Point inside face region
+    # Barycentric weights: u=va/denom (A), v=vb/denom (B), w=vc/denom (C).
+    # Closest point = A + (vb/denom)*AB + (vc/denom)*AC.
+    denom   = np.maximum(va + vb + vc, _DENOM_EPS)
+    cp_face = A + (vb / denom)[:, None] * AB + (vc / denom)[:, None] * AC
 
     return np.select(
-        [cond_A, cond_B, cond_C, cond_AB, cond_AC, cond_BC],
-        [_sq(A), _sq(B), _sq(C), _sq(cp_AB), _sq(cp_AC), _sq(cp_BC)],
-        default=_sq(cp_int),
+        [cond_A,  cond_B,  cond_C,  cond_AB,    cond_AC,    cond_BC],
+        [_sq(A),  _sq(B),  _sq(C),  _sq(cp_AB), _sq(cp_AC), _sq(cp_BC)],
+        default=_sq(cp_face),
     )
 
-
-# ---------------------------------------------------------------------------
-# Sign — Möller–Trumbore ray casting
-# ---------------------------------------------------------------------------
-
+# Moller-Trumbore algorithm.
+# taken from https://gist.github.com/V0XNIHILI/87c986441d8debc9cd0e9396580e85f4
+# but vectorized for multiple rays on a single triangle
 def _ray_triangle_hits(P: np.ndarray, ray_dir: np.ndarray, tri: np.ndarray) -> np.ndarray:
-    """Return (N,) int32: 1 where the ray from each point hits tri, 0 otherwise."""
+    """
+    P: (N, 3) N ray origin points
+    ray_dir: (3,) one common ray direction
+    tri: (3, 3) triangle vertices
+
+    Output: (N,) int32 array: 1 if the ray from that point hits the triangle, 0 otherwise.
+    """
+
+    # Triangle vertices and edges
     v0, v1, v2 = tri[0], tri[1], tri[2]
-    e1  = v1 - v0
-    e2  = v2 - v0
+    e1 = v1 - v0
+    e2 = v2 - v0
+
+    # Determinant test: if near zero, ray is parallel to triangle plane
     h   = np.cross(ray_dir, e2)
     det = float(e1 @ h)
-
-    if abs(det) < 1e-10:
+    if abs(det) < _PARALLEL_EPS:
         return np.zeros(len(P), dtype=np.int32)
 
-    inv_det = 1.0 / det
-    s = P - v0
-    u = inv_det * (s @ h)
-    q = np.cross(s, e1)
-    v = inv_det * (q @ ray_dir)
-    t = inv_det * (q @ e2)
+    # The ray intersects the triangle
+    # if some point along the ray
+    # = some point inside the triangle
 
-    hit = (u >= 0.0) & (v >= 0.0) & ((u + v) <= 1.0) & (t > 1e-10)
+    # Point on triangle = v₀ + ue₁ + ve₂
+    # ⇒ (u,v) = barycentric coordinates of the hit point
+    # t = signed distance along the ray direction
+
+    inv_det = 1.0 / det
+    s = P - v0                  # (N, 3)
+    u = inv_det * (s @ h)       # (N,)
+    q = np.cross(s, e1)         # (N, 3)
+    v = inv_det * (q @ ray_dir) # (N,)
+    t = inv_det * (q @ e2)      # (N,)
+
+    hit = (u >= 0.0) & (v >= 0.0) & ((u + v) <= 1.0) & (t > _ORIGIN_EPS)
     return hit.astype(np.int32)
 
-
-# ---------------------------------------------------------------------------
-# Combined: unsigned distance + sign
-# ---------------------------------------------------------------------------
 
 def _triangles_to_sdf(
     points: np.ndarray,
