@@ -1,15 +1,16 @@
 """nasa_shapes_demo.py — Multi-shape NASA STL → SDF demo.
 
-Downloads four geometrically varied NASA meshes and computes their signed
-distance fields.  Results are written as .npy files and combined into a
-single Plotly HTML report.
+Processes NASA STL meshes found in the same directory and computes their
+signed distance fields.  Results are written as .npy files and combined
+into a single Plotly HTML report.  Missing STL files are skipped silently.
 
 Shapes (ordered by increasing triangle count)
 --------------------------------------------
 1. Orion Capsule plug    (~2 K triangles)   — small smooth capsule piece
-2. CubeSat bottom        (~5 K triangles)   — boxy satellite component
-3. Mars 2020 rover wheel (~46 K triangles)  — cylindrical with tread features
-4. Asteroid 433 Eros     (~200 K triangles) — irregular rocky body
+2. Mars Rover Wheel      (~45 K triangles)  — Curiosity rover wheel tread
+3. CubeSat bottom        (~5 K triangles)   — boxy satellite component
+4. ISS Ratchet Wrench    (~7 K triangles)   — elongated tool with hex heads
+5. Asteroid 433 Eros     (~200 K triangles) — irregular rocky body
 
 Usage
 -----
@@ -30,39 +31,36 @@ import numpy as np
 # ---------------------------------------------------------------------------
 # Shape catalogue
 # ---------------------------------------------------------------------------
-_BASE = (
-    "https://raw.githubusercontent.com/nasa/NASA-3D-Resources"
-    "/master/3D%20Printing"
-)
-
 SHAPES = [
     {
         "name":  "Orion Capsule (plug)",
-        "url":   f"{_BASE}/Orion%20Capsule/Orion%20Capsule%20%28plug%29.stl",
         "stem":  "orion_plug",
         "slow":  False,
     },
     {
-        "name":  "CubeSat (bottom)",
-        "url":   f"{_BASE}/CubeSat/CubeSat%20bottom.stl",
-        "stem":  "cubesat_bottom",
-        "slow":  False,
-    },
-    {
-        "name":  "Mars 2020 Wheel",
-        "url":   f"{_BASE}/Mars%202020%205%20inch%20wheel/Mars%202020%205%20inch%20wheel.stl",
+        "name":  "Mars Rover Wheel",
         "stem":  "mars_wheel",
         "slow":  False,
     },
     {
+        "name":  "CubeSat (bottom)",
+        "stem":  "cubesat_bottom",
+        "slow":  False,
+    },
+    {
+        "name":  "ISS Ratchet Wrench",
+        "stem":  "iss_wrench",
+        "slow":  False,
+    },
+    {
         "name":  "Asteroid 433 Eros",
-        "url":   f"{_BASE}/Asteroid%20433%20Eros/Asteroid%20433%20Eros.stl",
         "stem":  "eros",
         "slow":  True,   # ~200K triangles — flag so --skip-eros works
     },
 ]
 
 _EXAMPLES_DIR = Path(__file__).parent
+_OUTPUT_DIR   = _EXAMPLES_DIR / "output"
 
 
 # ---------------------------------------------------------------------------
@@ -86,7 +84,7 @@ def _process_shape(shape: dict, res: int) -> dict | None:
     from sdf3d.grid import sample_levelset_3d
 
     stl_path = _EXAMPLES_DIR / f"{shape['stem']}.stl"
-    npy_path = _EXAMPLES_DIR / f"{shape['stem']}_sdf.npy"
+    npy_path = _OUTPUT_DIR / f"{shape['stem']}_sdf.npy"
 
     print(f"\n{'='*60}", flush=True)
     print(f"  {shape['name']}", flush=True)
@@ -220,10 +218,11 @@ def main() -> None:
     parser.add_argument("--skip-eros", action="store_true",
                         help="Skip Asteroid 433 Eros (~200K triangles, slowest shape)")
     parser.add_argument("--out", type=Path,
-                        default=_EXAMPLES_DIR / "nasa_shapes_report.html",
+                        default=_OUTPUT_DIR / "nasa_shapes_report.html",
                         help="Output HTML report path")
     args = parser.parse_args()
 
+    _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     shapes = [s for s in SHAPES if not (s["slow"] and args.skip_eros)]
 
     print(f"NASA SDF Demo — {len(shapes)} shape(s) at res={args.res}")

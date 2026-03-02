@@ -13,7 +13,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-viz = ["matplotlib>=3.5.0", "scikit-image>=0.19.0", "plotly>=5.0"]
+viz = [
+    "matplotlib>=3.5.0",
+ "scikit-image>=0.19.0",
+ "plotly>=5.0",
+ "yt>=4.2.1",
+]
 dev = ["pytest>=7.0"]
 # pyAMReX is NOT on PyPI — install separately via:
 #   conda create -n pyamrex -c conda-forge pyamrex

@@ -1,7 +1,7 @@
 """Union of two overlapping spheres.
 
 Demonstrates: Union3D, sample_levelset_3d
-Output:       examples/union_example.png
+Output:       examples/sdf3d/output/union_example.png
 
 Mathematical identity verified:
     Union(A, B)(p) == min(A(p), B(p))
@@ -12,9 +12,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 import numpy as np
 from sdf3d import Sphere3D, Union3D, sample_levelset_3d
 
-_BOUNDS = ((-1.0, 1.0), (-1.0, 1.0), (-1.0, 1.0))
-_RES    = (64, 64, 64)
-_OUT    = os.path.join(os.path.dirname(__file__), "union_example.png")
+_BOUNDS  = ((-1.0, 1.0), (-1.0, 1.0), (-1.0, 1.0))
+_RES     = (64, 64, 64)
+_OUT_DIR = os.path.join(os.path.dirname(__file__), "output")
+_OUT     = os.path.join(_OUT_DIR, "union_example.png")
 
 
 def _render_png(phi, out_path, title=""):
@@ -55,6 +56,7 @@ def _render_png(phi, out_path, title=""):
 
 
 def main():
+    os.makedirs(_OUT_DIR, exist_ok=True)
     print("=" * 60)
     print("UNION: two overlapping spheres")
     print("  S1: centre (-0.2, 0, 0)  radius 0.3")

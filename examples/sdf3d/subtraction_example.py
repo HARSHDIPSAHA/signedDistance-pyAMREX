@@ -1,7 +1,7 @@
 """Subtraction: sphere with a spherical cavity.
 
 Demonstrates: Subtraction3D (base.subtract(cutter)), sample_levelset_3d
-Output:       examples/subtraction_example.png
+Output:       examples/sdf3d/output/subtraction_example.png
 
 Argument order reminder:
     opSubtraction(d1, d2) = max(-d1, d2)   where d1=CUTTER, d2=BASE
@@ -17,9 +17,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 import numpy as np
 from sdf3d import Sphere3D, Subtraction3D, sample_levelset_3d
 
-_BOUNDS = ((-1.0, 1.0), (-1.0, 1.0), (-1.0, 1.0))
-_RES    = (64, 64, 64)
-_OUT    = os.path.join(os.path.dirname(__file__), "subtraction_example.png")
+_BOUNDS  = ((-1.0, 1.0), (-1.0, 1.0), (-1.0, 1.0))
+_RES     = (64, 64, 64)
+_OUT_DIR = os.path.join(os.path.dirname(__file__), "output")
+_OUT     = os.path.join(_OUT_DIR, "subtraction_example.png")
 
 
 def _render_png(phi, out_path, title=""):
@@ -60,6 +61,7 @@ def _render_png(phi, out_path, title=""):
 
 
 def main():
+    os.makedirs(_OUT_DIR, exist_ok=True)
     print("=" * 60)
     print("SUBTRACTION: sphere with spherical cavity")
     print("  Base:   centre (0,   0, 0)  radius 0.40")

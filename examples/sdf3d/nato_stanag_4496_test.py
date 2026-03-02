@@ -2,8 +2,8 @@
 
 Demonstrates: NATOFragment, Box3D, Union3D, Geometry3D transforms,
               sample_levelset_3d
-Output:       examples/nato_fragment.png
-              examples/nato_impact_scene.png
+Output:       examples/sdf3d/output/nato_fragment.png
+              examples/sdf3d/output/nato_impact_scene.png
 
 Scene setup
 -----------
@@ -23,7 +23,8 @@ import numpy as np
 from sdf3d import Box3D, Union3D, sample_levelset_3d
 from sdf3d.examples import NATOFragment
 
-_DIR = os.path.dirname(__file__)
+_DIR     = os.path.dirname(__file__)
+_OUT_DIR = os.path.join(_DIR, "output")
 
 
 # ---------------------------------------------------------------------------
@@ -82,6 +83,7 @@ def _render_png(phi, bounds, out_path, title="", color=(0.6, 0.7, 0.9)):
 # ---------------------------------------------------------------------------
 
 def main():
+    os.makedirs(_OUT_DIR, exist_ok=True)
     print("=" * 65)
     print("NATO STANAG-4496 FRAGMENT IMPACT SCENE")
     print("=" * 65)
@@ -112,7 +114,7 @@ def main():
     print(f"  Inside voxels: {inside}")
 
     _render_png(phi_frag, frag_bounds,
-                os.path.join(_DIR, "nato_fragment.png"),
+                os.path.join(_OUT_DIR, "nato_fragment.png"),
                 title=f"STANAG-4496 fragment  dia{diameter*1e3:.1f} mm",
                 color=(0.7, 0.75, 0.8))
 
@@ -149,7 +151,7 @@ def main():
     print(f"  SDF range : [{phi_scene.min():.4e}, {phi_scene.max():.4e}] m")
 
     _render_png(phi_scene, scene_bounds,
-                os.path.join(_DIR, "nato_impact_scene.png"),
+                os.path.join(_OUT_DIR, "nato_impact_scene.png"),
                 title="Impact scene: fragment + target",
                 color=(0.5, 0.65, 0.9))
 

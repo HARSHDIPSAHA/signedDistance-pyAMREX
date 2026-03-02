@@ -1,6 +1,6 @@
 # pySdf — Examples
 
-Standalone scripts demonstrating the `sdf2d`, `sdf3d`, and `stl2sdf` APIs.
+Standalone scripts demonstrating the `sdf3d`, and `stl2sdf` APIs.
 **No AMReX required** — all geometry is evaluated in pure NumPy.
 
 Output files (PNG, HTML, NPY) are written to **this folder** (`examples/`).

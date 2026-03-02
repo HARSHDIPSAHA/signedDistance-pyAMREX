@@ -2,7 +2,7 @@
 
 Usage::
 
-    python scripts/gallery_2d.py                   # saves gallery_2d.png
+    python scripts/gallery_2d.py                   # saves scripts/output/gallery_2d.png
     python scripts/gallery_2d.py --out my_file.png # custom output path
 
 Requirements: numpy, matplotlib  (no AMReX needed)
@@ -13,6 +13,7 @@ import argparse
 import os
 import sys
 import warnings
+from pathlib import Path
 from typing import Sequence
 
 # Ensure the repo root (parent of scripts/) is importable regardless of cwd
@@ -158,12 +159,12 @@ def render_gallery(shapes: list[tuple[str, object]], out_path: str, ncols: int =
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Render all sdf2d shapes to a single PNG gallery.")
-    # Default output path: save in project root (parent of scripts/)
-    default_out = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "gallery_2d.png")
+    default_out = str(Path(__file__).parent / "output" / "gallery_2d.png")
     parser.add_argument("--out", default=default_out, help="Output PNG path")
     parser.add_argument("--cols", type=int, default=7, help="Number of columns (default 7)")
     args = parser.parse_args()
 
+    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     shapes = _make_shapes()
     render_gallery(shapes, args.out, ncols=args.cols)
 

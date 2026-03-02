@@ -5,7 +5,7 @@ matplotlib's 3-D axes to display it — no AMReX or yt required.
 
 Usage::
 
-    python scripts/gallery_3d.py                   # saves gallery_3d.png
+    python scripts/gallery_3d.py                   # saves scripts/output/gallery_3d.png
     python scripts/gallery_3d.py --out my_file.png
     python scripts/gallery_3d.py --res 48          # faster, lower quality
 
@@ -18,6 +18,7 @@ import argparse
 import os
 import sys
 import warnings
+from pathlib import Path
 
 # Ensure the repo root (parent of scripts/) is importable regardless of cwd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -26,6 +27,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
+from sdf2d import primitives as sdf2d
 from sdf3d import primitives as sdf
 from sdf3d.examples import NATOFragment, RocketAssembly
 
@@ -144,7 +146,7 @@ def _make_shapes() -> list[tuple[str, object]]:
          lambda p: sdf.opSmoothIntersection(base_sphere(p), base_box(p), 0.15)),
         # --- domain operations ---
         ("opRevolution",
-         lambda p: sdf.opRevolution(p, lambda q: sdf.sdCircle(q, 0.2), 0.18)),
+         lambda p: sdf.opRevolution(p, lambda q: sdf2d.sdCircle(q, 0.2), 0.18)),
         ("opExtrusion",
          lambda p: sdf.opExtrusion(p, lambda q: sdf.sdBox(q, np.array([0.2, 0.2])), 0.12)),
         ("opElongate1",
@@ -304,12 +306,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Render all sdf3d 3D primitives to a single PNG gallery."
     )
-    parser.add_argument("--out",  default="gallery_3d.png", help="Output PNG path")
+    parser.add_argument("--out",  default=str(Path(__file__).parent / "output" / "gallery_3d.png"), help="Output PNG path")
     parser.add_argument("--cols", type=int, default=8, help="Number of columns (default 8)")
     parser.add_argument("--res",  type=int, default=48,
                         help="Grid resolution per axis (default 80, use 96+ for highest quality)")
     args = parser.parse_args()
 
+    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     shapes = _make_shapes()
     render_gallery(shapes, args.out, ncols=args.cols, res=args.res)
 

@@ -5,17 +5,17 @@ with the same union / subtraction API as analytic primitives (Sphere3D, Box3D).
 
 Shapes
 ------
-* Mars 2020 Wheel  (mars_wheel.stl, ~45 K triangles)
-  Normalised aspect: 1.0 x 1.0 x 0.58 — squat cylinder with tread detail.
+* Mars Rover Wheel  (mars_wheel.stl, ~45 K triangles)
+  Normalised aspect: 1.0 x 1.0 x 0.587 — disc with tread pattern.
   Must be present in the same directory as this script.
 
-* Sphere3D(0.3)  shifted to (0.5, 0, 0) — 50% overlap with the wheel in X.
+* Sphere3D(0.20) shifted to (0.35, 0, 0) — overlaps the wheel rim.
 
 Operations shown (4 panels)
 ----------------------------
 1. Wheel alone
 2. Sphere alone
-3. Wheel union Sphere        — wheel with sphere bulging from its rim
+3. Wheel union Sphere        — wheel with a sphere fused to its rim
 4. Wheel subtract Sphere     — wheel with a spherical bite taken from its rim
 
 Usage
@@ -39,12 +39,12 @@ from stl2sdf import stl_to_geometry
 _HERE = Path(__file__).parent
 _WHEEL_STL = _HERE / "mars_wheel.stl"
 
-# Sphere positioned so it overlaps the wheel rim by ~50 % in X
-_SPHERE_CENTRE = (0.5, 0.0, 0.0)
-_SPHERE_RADIUS = 0.3
+# Sphere positioned to overlap the wheel rim by ~50 % in X
+_SPHERE_CENTRE = (0.35, 0.0, 0.0)
+_SPHERE_RADIUS = 0.20
 
-# Bounds covering wheel (x in [-0.5,0.5]) + sphere (x in [0.2,0.8]) + 15 % pad
-_BOUNDS = ((-0.65, 0.75), (-0.65, 0.65), (-0.65, 0.65))
+# Bounds covering wheel (x,y in [-0.5,0.5], z in [-0.30,0.30]) + sphere + 15 % pad
+_BOUNDS = ((-0.65, 0.65), (-0.65, 0.65), (-0.45, 0.45))
 
 
 # ---------------------------------------------------------------------------
@@ -68,7 +68,7 @@ def _load_wheel():
     extent = (hi - lo).max()
 
     print(
-        f"  Mars 2020 Wheel: {len(tris):,} tris  "
+        f"  Mars Rover Wheel: {len(tris):,} tris  "
         f"normalised aspect {((hi - lo) / extent).round(2).tolist()}",
         flush=True,
     )
@@ -120,7 +120,7 @@ def _build_report(panels: list[dict], out_html: Path) -> None:
     for col, p in enumerate(panels, start=1):
         phi = p["phi"]
 
-        # Mid-Z slice: z=0 cuts through full wheel width and sphere equator
+        # Mid-Z slice: z=0 cuts through wrench body and sphere equator
         mid  = phi[res // 2, :, :]   # (ny, nx)
         clim = float(np.abs(mid).max()) or 1.0
 
@@ -183,19 +183,20 @@ def main() -> None:
     )
     parser.add_argument(
         "--out", type=Path,
-        default=_HERE / "nasa_boolean_report.html",
+        default=_HERE / "output" / "nasa_boolean_report.html",
     )
     args = parser.parse_args()
 
+    args.out.parent.mkdir(parents=True, exist_ok=True)
     print("Loading mesh ...\n")
     wheel  = _load_wheel()
     sphere = Sphere3D(_SPHERE_RADIUS).translate(*_SPHERE_CENTRE)
 
     operations = [
-        ("Wheel",              wheel),
-        ("Sphere",             sphere),
-        ("Wheel union Sphere", wheel.union(sphere)),
-        ("Wheel - Sphere",     wheel.subtract(sphere)),
+        ("Wheel",               wheel),
+        ("Sphere",              sphere),
+        ("Wheel union Sphere",  wheel.union(sphere)),
+        ("Wheel - Sphere",      wheel.subtract(sphere)),
     ]
 
     panels: list[dict] = []
@@ -206,7 +207,7 @@ def main() -> None:
         dt  = time.perf_counter() - t0
         print(
             f"  {dt:.1f}s  phi=[{phi.min():.3f}, {phi.max():.3f}]"
-            f"  inside={( phi < 0).mean()*100:.1f}%",
+            f"  inside={(phi < 0).mean()*100:.1f}%",
             flush=True,
         )
         panels.append({"label": label, "phi": phi, "res": args.res, "time_s": dt})
