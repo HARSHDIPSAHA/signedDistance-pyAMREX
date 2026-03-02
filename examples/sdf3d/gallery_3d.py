@@ -298,7 +298,7 @@ def main() -> None:
         description="Render all sdf3d 3D primitives to a single PNG gallery."
     )
     parser.add_argument(
-        "--out", default=str(Path(__file__).parent / "output" / "gallery_3d.png"),
+        "--out", default="gallery_3d.png",
         help="Output PNG path",
     )
     parser.add_argument("--cols", type=int, default=8, help="Number of columns (default 8)")
@@ -309,6 +309,8 @@ def main() -> None:
     args = parser.parse_args()
 
     out = Path(args.out)
+    if out.parent == Path('.'):
+        out = Path("output") / out
     out.parent.mkdir(parents=True, exist_ok=True)
     shapes = _make_shapes()
     render_gallery(shapes, out, ncols=args.cols, res=args.res)

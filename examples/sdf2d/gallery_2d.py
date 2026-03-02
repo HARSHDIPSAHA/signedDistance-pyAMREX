@@ -157,12 +157,13 @@ def render_gallery(shapes: list[tuple[str, object]], out_path: Path, ncols: int 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Render all sdf2d shapes to a single PNG gallery.")
-    default_out = Path(__file__).parent / "output" / "gallery_2d.png"
-    parser.add_argument("--out", default=str(default_out), help="Output PNG path")
+    parser.add_argument("--out", default="gallery_2d.png", help="Output PNG path")
     parser.add_argument("--cols", type=int, default=7, help="Number of columns (default 7)")
     args = parser.parse_args()
 
     out = Path(args.out)
+    if out.parent == Path('.'):
+        out = Path("output") / out
     out.parent.mkdir(parents=True, exist_ok=True)
     shapes = _make_shapes()
     render_gallery(shapes, out, ncols=args.cols)

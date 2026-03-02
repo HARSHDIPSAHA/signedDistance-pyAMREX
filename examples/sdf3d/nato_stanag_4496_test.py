@@ -1,12 +1,10 @@
-from pathlib import Path
 import sys
 import numpy as np
+from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from sdf3d import Box3D
 from sdf3d.examples import NATOFragment
-
-_OUT_DIR = Path(__file__).parent / "output"
 
 
 class _MockLib:
@@ -28,7 +26,7 @@ frag_bounds = (
     (-diameter * 0.2, total_length + diameter * 0.2),
 )
 fragment_geom.save_png(
-    _OUT_DIR / "nato_fragment.png",
+    "nato_fragment.png",
     bounds=frag_bounds,
     resolution=(48, 48, 80),
     color=(0.7, 0.75, 0.8),
@@ -51,7 +49,7 @@ scene  = positioned.union(target)
 
 scene_bounds = ((-0.04, 0.10), (-0.04, 0.10), (-0.04, 0.10))
 scene.save_png(
-    _OUT_DIR / "nato_impact_scene.png",
+    "nato_impact_scene.png",
     bounds=scene_bounds,
     color=(0.5, 0.65, 0.9),
     title="Impact scene: fragment + target",

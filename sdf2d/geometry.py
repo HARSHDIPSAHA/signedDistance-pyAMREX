@@ -124,6 +124,8 @@ class Geometry2D:
         import warnings
 
         path = Path(path)
+        if path.parent == Path('.'):
+            path = Path("output") / path
         path.parent.mkdir(parents=True, exist_ok=True)
 
         try:

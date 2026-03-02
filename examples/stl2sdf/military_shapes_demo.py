@@ -20,8 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from stl2sdf import stl_to_geometry, mesh_bounds
 from sdf3d import save_plotly_html_grid
 
-_HERE      = Path(__file__).parent
-_OUTPUT    = _HERE / "output" / "military_shapes_report.html"
+_HERE   = Path(__file__).parent
 
 SHAPES = [
     ("Artillery Shell", _HERE / "artillery_shell.stl"),
@@ -35,7 +34,7 @@ def main() -> None:
     )
     parser.add_argument("--res", type=int, default=50,
                         help="Grid resolution per axis (default 50)")
-    parser.add_argument("--out", type=Path, default=_OUTPUT,
+    parser.add_argument("--out", type=Path, default=Path("military_shapes_report.html"),
                         help="Output HTML report path")
     args = parser.parse_args()
 

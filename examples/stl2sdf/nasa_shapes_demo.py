@@ -33,7 +33,7 @@ SHAPES = [
 ]
 
 _EXAMPLES_DIR = Path(__file__).parent
-_OUTPUT_DIR   = _EXAMPLES_DIR / "output"
+_OUTPUT_DIR   = Path("output")
 
 
 # ---------------------------------------------------------------------------
@@ -163,9 +163,14 @@ def main() -> None:
     parser.add_argument("--res", type=int, default=40,
                         help="Grid resolution per axis (default 40)")
     parser.add_argument("--out", type=Path,
-                        default=_OUTPUT_DIR / "nasa_shapes_report.html",
+                        default=Path("nasa_shapes_report.html"),
                         help="Output HTML report path")
     args = parser.parse_args()
+
+    out = args.out
+    if out.parent == Path('.'):
+        out = Path("output") / out
+    args.out = out
 
     _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     print(f"NASA SDF Demo — {len(SHAPES)} shape(s) at res={args.res}")

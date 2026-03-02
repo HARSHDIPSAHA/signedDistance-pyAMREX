@@ -146,6 +146,8 @@ class Geometry3D:
         """
         from pathlib import Path
         path = Path(path)
+        if path.parent == Path('.'):
+            path = Path("output") / path
         path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
@@ -387,6 +389,8 @@ def save_plotly_html_grid(
     from .grid import sample_levelset_3d
 
     path = Path(path)
+    if path.parent == Path('.'):
+        path = Path("output") / path
     path.parent.mkdir(parents=True, exist_ok=True)
 
     n = len(panels)

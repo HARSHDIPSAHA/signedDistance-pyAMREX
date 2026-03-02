@@ -144,11 +144,15 @@ def main() -> None:
     )
     parser.add_argument(
         "--out", type=Path,
-        default=_HERE / "output" / "nasa_boolean_report.html",
+        default=Path("nasa_boolean_report.html"),
     )
     args = parser.parse_args()
 
-    args.out.parent.mkdir(parents=True, exist_ok=True)
+    out = args.out
+    if out.parent == Path('.'):
+        out = Path("output") / out
+    args.out = out
+    out.parent.mkdir(parents=True, exist_ok=True)
     print("Loading mesh ...\n")
     wheel  = _load_wheel()
     sphere = Sphere3D(_SPHERE_RADIUS).translate(*_SPHERE_CENTRE)
