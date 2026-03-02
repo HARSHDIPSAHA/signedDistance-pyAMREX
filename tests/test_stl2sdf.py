@@ -1,11 +1,12 @@
 """Tests for stl2sdf.
 
-Internal math tested via stl2sdf._math (private but tested directly).
+STL loading tested via stl2sdf._math (private but tested directly).
 Public API tested via stl2sdf.stl_to_geometry.
 """
 from __future__ import annotations
 
 import struct
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -13,13 +14,7 @@ import numpy.testing as npt
 import pytest
 
 from stl2sdf import stl_to_geometry
-from stl2sdf._math import (
-    _RAY_DIR,
-    _stl_to_triangles,
-    _triangle_sq_dist,
-    _ray_triangle_hits,
-    _triangles_to_sdf,
-)
+from stl2sdf._math import _stl_to_triangles
 from sdf3d.geometry import Geometry3D
 from sdf3d import Sphere3D
 
@@ -104,114 +99,6 @@ class TestStlToTriangles:
 
 
 # ---------------------------------------------------------------------------
-# _triangle_sq_dist — all 7 Voronoi regions
-# ---------------------------------------------------------------------------
-
-class TestTriangleSqDist:
-    def setup_method(self):
-        # Right-angle triangle: A=(0,0,0), B=(1,0,0), C=(0,1,0)
-        self.tri = np.array([[0,0,0],[1,0,0],[0,1,0]], dtype=np.float64)
-
-    def _sq(self, p):
-        return _triangle_sq_dist(np.atleast_2d(np.array(p, dtype=np.float64)), self.tri)
-
-    def test_vertex_A(self):
-        npt.assert_allclose(self._sq([-1,-1,0]), [2.0], atol=1e-10)
-
-    def test_vertex_B(self):
-        npt.assert_allclose(self._sq([2,-1,0]), [2.0], atol=1e-10)
-
-    def test_vertex_C(self):
-        npt.assert_allclose(self._sq([-1,2,0]), [2.0], atol=1e-10)
-
-    def test_edge_AB(self):
-        npt.assert_allclose(self._sq([0.5,-1,0]), [1.0], atol=1e-10)
-
-    def test_edge_AC(self):
-        npt.assert_allclose(self._sq([-1,0.5,0]), [1.0], atol=1e-10)
-
-    def test_edge_BC(self):
-        p  = np.array([0.8, 0.8, 0.0])
-        BC = np.array([-1.0, 1.0, 0.0])
-        t  = np.clip(np.dot(p - np.array([1,0,0]), BC) / np.dot(BC,BC), 0, 1)
-        cp = np.array([1,0,0]) + t * BC
-        npt.assert_allclose(self._sq(p), [np.sum((p-cp)**2)], atol=1e-10)
-
-    def test_interior(self):
-        npt.assert_allclose(self._sq([0.2, 0.2, 0.5]), [0.25], atol=1e-10)
-
-    def test_batch(self):
-        P  = np.array([[-1,-1,0],[2,-1,0],[0.2,0.2,0.5]], dtype=np.float64)
-        sq = _triangle_sq_dist(P, self.tri)
-        assert sq.shape == (3,)
-        assert sq[0] == pytest.approx(2.0, abs=1e-10)
-        assert sq[1] == pytest.approx(2.0, abs=1e-10)
-        assert sq[2] == pytest.approx(0.25, abs=1e-10)
-
-
-# ---------------------------------------------------------------------------
-# _ray_triangle_hits
-# ---------------------------------------------------------------------------
-
-class TestRayTriangleHits:
-    def setup_method(self):
-        self.tri     = np.array([[0,0,0],[2,0,0],[0,2,0]], dtype=np.float64)
-        self.ray_dir = np.array([0.0, 0.0, 1.0])
-
-    def test_hit_interior(self):
-        assert _ray_triangle_hits(np.array([[0.5,0.5,-1.0]]), self.ray_dir, self.tri)[0] == 1
-
-    def test_miss_exterior(self):
-        assert _ray_triangle_hits(np.array([[3.0,3.0,-1.0]]), self.ray_dir, self.tri)[0] == 0
-
-    def test_behind_triangle(self):
-        assert _ray_triangle_hits(np.array([[0.5,0.5,1.0]]), self.ray_dir, self.tri)[0] == 0
-
-    def test_parallel_ray(self):
-        assert _ray_triangle_hits(np.array([[0.5,0.5,-1.0]]), np.array([1.,0.,0.]), self.tri)[0] == 0
-
-    def test_batch(self):
-        P = np.array([[0.5,0.5,-1.0],[3.0,3.0,-1.0],[0.5,0.5,1.0]])
-        assert list(_ray_triangle_hits(P, self.ray_dir, self.tri)) == [1, 0, 0]
-
-
-# ---------------------------------------------------------------------------
-# _triangles_to_sdf
-# ---------------------------------------------------------------------------
-
-class TestTrianglesToSdf:
-    def setup_method(self):
-        self.tris = _make_box_triangles()
-
-    def test_inside_negative(self):
-        assert _triangles_to_sdf(np.array([[0.,0.,0.]]), self.tris)[0] < 0
-
-    def test_outside_positive(self):
-        assert _triangles_to_sdf(np.array([[2.,2.,2.]]), self.tris)[0] > 0
-
-    def test_on_face_approx_zero(self):
-        npt.assert_allclose(_triangles_to_sdf(np.array([[0.5,0.,0.]]), self.tris), [0.], atol=1e-6)
-
-    def test_distance_inside(self):
-        phi = _triangles_to_sdf(np.array([[0.3,0.,0.]]), self.tris)
-        npt.assert_allclose(np.abs(phi), [0.2], atol=1e-5)
-        assert phi[0] < 0
-
-    def test_distance_outside(self):
-        npt.assert_allclose(_triangles_to_sdf(np.array([[1.,0.,0.]]), self.tris), [0.5], atol=1e-5)
-
-    def test_custom_ray_dir(self):
-        phi = _triangles_to_sdf(np.array([[0.,0.,0.]]), self.tris, ray_dir=np.array([0.1,0.3,0.7]))
-        assert phi[0] < 0
-
-    def test_batch_signs(self):
-        inner = np.array([[0.,0.,0.],[0.2,0.1,0.],[0.,-0.2,0.1]])
-        outer = np.array([[2.,0.,0.],[0.,2.,0.],[0.,0.,2.]])
-        assert np.all(_triangles_to_sdf(inner, self.tris) < 0)
-        assert np.all(_triangles_to_sdf(outer, self.tris) > 0)
-
-
-# ---------------------------------------------------------------------------
 # stl_to_geometry (public API)
 # ---------------------------------------------------------------------------
 
@@ -230,6 +117,18 @@ class TestStlToGeometry:
         stl = tmp_path / "box.stl"
         stl.write_bytes(_write_binary_stl(_make_box_triangles()))
         assert stl_to_geometry(stl).sdf(np.array([[2.,0.,0.]]))[0] > 0
+
+    def test_distance_inside(self, tmp_path):
+        stl = tmp_path / "box.stl"
+        stl.write_bytes(_write_binary_stl(_make_box_triangles()))
+        phi = stl_to_geometry(stl).sdf(np.array([[0.3, 0., 0.]]))
+        npt.assert_allclose(np.abs(phi), [0.2], atol=1e-5)
+        assert phi[0] < 0
+
+    def test_distance_outside(self, tmp_path):
+        stl = tmp_path / "box.stl"
+        stl.write_bytes(_write_binary_stl(_make_box_triangles()))
+        npt.assert_allclose(stl_to_geometry(stl).sdf(np.array([[1., 0., 0.]])), [0.5], atol=1e-5)
 
     def test_batch_shape(self, tmp_path):
         stl = tmp_path / "box.stl"
@@ -280,6 +179,16 @@ class TestStlToGeometry:
         base   = stl_to_geometry(_stl("base.stl"))
         cutter = stl_to_geometry(_stl("cutter.stl", hx=0.3, hy=0.3, hz=0.3))
         assert base.subtract(cutter).sdf(np.array([[0., 0., 0.]]))[0] > 0
+
+    def test_ray_dir_warns(self, tmp_path):
+        stl = tmp_path / "box.stl"
+        stl.write_bytes(_write_binary_stl(_make_box_triangles()))
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            stl_to_geometry(stl, ray_dir=np.array([0., 0., 1.]))
+        assert len(w) == 1
+        assert issubclass(w[0].category, UserWarning)
+        assert "ray_dir" in str(w[0].message)
 
     @pytest.mark.parametrize("stem", ["orion_plug", "mars_wheel"])
     def test_real_stl(self, stem):

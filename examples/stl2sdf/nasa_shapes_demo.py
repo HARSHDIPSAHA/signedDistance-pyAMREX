@@ -2,21 +2,17 @@
 
 Processes NASA STL meshes found in the same directory and computes their
 signed distance fields.  Results are written as .npy files and combined
-into a single Plotly HTML report.  Missing STL files are skipped silently.
+into a single Plotly HTML report.
 
-Shapes (ordered by increasing triangle count)
---------------------------------------------
+Shapes
+------
 1. Orion Capsule plug    (~2 K triangles)   — small smooth capsule piece
 2. Mars Rover Wheel      (~45 K triangles)  — Curiosity rover wheel tread
-3. CubeSat bottom        (~5 K triangles)   — boxy satellite component
-4. ISS Ratchet Wrench    (~7 K triangles)   — elongated tool with hex heads
-5. Asteroid 433 Eros     (~200 K triangles) — irregular rocky body
 
 Usage
 -----
-python examples/nasa_shapes_demo.py           # res=20 for all shapes
-python examples/nasa_shapes_demo.py --res 30  # higher quality (much slower for Eros)
-python examples/nasa_shapes_demo.py --skip-eros  # skip the slow 200K-tri mesh
+uv run python examples/stl2sdf/nasa_shapes_demo.py           # res=40
+uv run python examples/stl2sdf/nasa_shapes_demo.py --res 60  # higher quality
 """
 
 from __future__ import annotations
@@ -32,31 +28,8 @@ import numpy as np
 # Shape catalogue
 # ---------------------------------------------------------------------------
 SHAPES = [
-    {
-        "name":  "Orion Capsule (plug)",
-        "stem":  "orion_plug",
-        "slow":  False,
-    },
-    {
-        "name":  "Mars Rover Wheel",
-        "stem":  "mars_wheel",
-        "slow":  False,
-    },
-    {
-        "name":  "CubeSat (bottom)",
-        "stem":  "cubesat_bottom",
-        "slow":  False,
-    },
-    {
-        "name":  "ISS Ratchet Wrench",
-        "stem":  "iss_wrench",
-        "slow":  False,
-    },
-    {
-        "name":  "Asteroid 433 Eros",
-        "stem":  "eros",
-        "slow":  True,   # ~200K triangles — flag so --skip-eros works
-    },
+    {"name": "Orion Capsule (plug)", "stem": "orion_plug"},
+    {"name": "Mars Rover Wheel",     "stem": "mars_wheel"},
 ]
 
 _EXAMPLES_DIR = Path(__file__).parent
@@ -78,7 +51,6 @@ def _auto_bounds(triangles: np.ndarray, pad_frac: float = 0.10):
 
 
 def _process_shape(shape: dict, res: int) -> dict | None:
-    """Compute SDF for a shape whose STL is already on disk; skip if absent."""
     from stl2sdf import stl_to_geometry
     from stl2sdf._math import _stl_to_triangles
     from sdf3d.grid import sample_levelset_3d
@@ -90,21 +62,13 @@ def _process_shape(shape: dict, res: int) -> dict | None:
     print(f"  {shape['name']}", flush=True)
     print(f"{'='*60}", flush=True)
 
-    if not stl_path.exists():
-        print(f"  SKIP: {stl_path.name} not found in examples/stl2sdf/", flush=True)
-        return None
-
-    # --- inspect ---
     triangles = _stl_to_triangles(stl_path)
     n_tri  = len(triangles)
     bounds = _auto_bounds(triangles)
     print(f"  Triangles : {n_tri:>10,}", flush=True)
     print(f"  Bounds    : {bounds}", flush=True)
     print(f"  Grid      : {res}^3 = {res**3:,} points", flush=True)
-    est_ops = n_tri * res**3
-    print(f"  Est. ops  : ~{est_ops/1e9:.1f}B  (O(FxN))", flush=True)
 
-    # --- SDF ---
     geom = stl_to_geometry(stl_path)
     t0   = time.perf_counter()
     phi  = sample_levelset_3d(geom, bounds, (res, res, res))
@@ -143,14 +107,12 @@ def _build_report(results: list[dict], out_html: Path) -> None:
 
     n = len(results)
     fig = make_subplots(
-        rows=2, cols=n,
-        specs=[[{"type": "xy"}] * n, [{"type": "scene"}] * n],
+        rows=1, cols=n,
+        specs=[[{"type": "scene"}] * n],
         subplot_titles=[
-            *[f"{r['name']}<br>{r['n_tri']:,} tris | {r['res']}³ | {r['time_s']:.0f}s"
-              for r in results],
-            *["φ = 0 surface"] * n,
+            f"{r['name']}<br>{r['n_tri']:,} tris | {r['res']}³ | {r['time_s']:.1f}s"
+            for r in results
         ],
-        vertical_spacing=0.08,
         horizontal_spacing=0.05,
     )
 
@@ -165,22 +127,6 @@ def _build_report(results: list[dict], out_html: Path) -> None:
         zs = np.linspace(z0, z1, res, endpoint=False) + (z1 - z0) / (2.0 * res)
         Z3, Y3, X3 = np.meshgrid(zs, ys, xs, indexing="ij")
 
-        # Row 1: mid-Z heatmap
-        mid = phi[res // 2]
-        clim = float(np.abs(mid).max())
-        fig.add_trace(
-            go.Heatmap(
-                z=mid, x=xs, y=ys,
-                colorscale="RdBu", reversescale=True,
-                zmid=0.0, zmin=-clim, zmax=clim,
-                showscale=(col == 1),
-                colorbar=dict(title=dict(text="φ"), x=-0.02) if col == 1 else None,
-            ),
-            row=1, col=col,
-        )
-        fig.update_xaxes(scaleanchor=f"y{col if col > 1 else ''}", row=1, col=col)
-
-        # Row 2: 3-D isosurface
         fig.add_trace(
             go.Isosurface(
                 x=X3.ravel(), y=Y3.ravel(), z=Z3.ravel(),
@@ -191,13 +137,14 @@ def _build_report(results: list[dict], out_html: Path) -> None:
                 caps=dict(x_show=False, y_show=False, z_show=False),
                 lighting=dict(ambient=0.6, diffuse=0.8, specular=0.3),
             ),
-            row=2, col=col,
+            row=1, col=col,
         )
 
+    fig.update_scenes(aspectmode="data")
     fig.update_layout(
-        title=dict(text="NASA Shape Gallery — Signed Distance Fields", font=dict(size=18)),
-        width=380 * n,
-        height=900,
+        title=dict(text="NASA Shape Gallery — φ = 0 Surfaces", font=dict(size=18)),
+        width=550 * n,
+        height=600,
         paper_bgcolor="#1a1a2e",
         plot_bgcolor="#1a1a2e",
         font=dict(color="#e0e0e0"),
@@ -213,23 +160,18 @@ def _build_report(results: list[dict], out_html: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="NASA multi-shape STL → SDF demo")
-    parser.add_argument("--res", type=int, default=20,
-                        help="Grid resolution per axis (default 20; increase for quality)")
-    parser.add_argument("--skip-eros", action="store_true",
-                        help="Skip Asteroid 433 Eros (~200K triangles, slowest shape)")
+    parser.add_argument("--res", type=int, default=40,
+                        help="Grid resolution per axis (default 40)")
     parser.add_argument("--out", type=Path,
                         default=_OUTPUT_DIR / "nasa_shapes_report.html",
                         help="Output HTML report path")
     args = parser.parse_args()
 
     _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    shapes = [s for s in SHAPES if not (s["slow"] and args.skip_eros)]
-
-    print(f"NASA SDF Demo — {len(shapes)} shape(s) at res={args.res}")
-    print(f"  (use --skip-eros to skip the 200K-tri Eros mesh)")
+    print(f"NASA SDF Demo — {len(SHAPES)} shape(s) at res={args.res}")
 
     results = []
-    for shape in shapes:
+    for shape in SHAPES:
         result = _process_shape(shape, args.res)
         if result is not None:
             results.append(result)
@@ -237,7 +179,7 @@ def main() -> None:
     if results:
         _build_report(results, args.out)
 
-    print(f"\nAll done.  {len(results)}/{len(shapes)} shape(s) succeeded.")
+    print(f"\nAll done.  {len(results)}/{len(SHAPES)} shape(s) succeeded.")
 
 
 if __name__ == "__main__":

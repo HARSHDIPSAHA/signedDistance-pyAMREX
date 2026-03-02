@@ -2,12 +2,12 @@
 
 Loads the two STL files from the same directory, computes their signed distance
 fields on a regular 3-D grid, and produces an interactive Plotly HTML report
-with a mid-Z heatmap (top row) and a φ = 0 isosurface (bottom row).
+showing the φ = 0 isosurface for each shape.
 
 Usage
 -----
-uv run python examples/stl2sdf/military_shapes_demo.py            # res=25
-uv run python examples/stl2sdf/military_shapes_demo.py --res 40  # higher quality
+uv run python examples/stl2sdf/military_shapes_demo.py            # res=50
+uv run python examples/stl2sdf/military_shapes_demo.py --res 80  # higher quality
 uv run python examples/stl2sdf/military_shapes_demo.py --out my_report.html
 """
 
@@ -61,9 +61,7 @@ def _process_shape(shape: dict, res: int) -> dict | None:
     n_tri     = len(triangles)
     bounds    = _auto_bounds(triangles)
     print(f"  Triangles : {n_tri:>10,}", flush=True)
-    print(f"  Bounds    : {bounds}", flush=True)
     print(f"  Grid      : {res}³ = {res**3:,} points", flush=True)
-    print(f"  Est. ops  : ~{n_tri * res**3 / 1e9:.2f}B  (O(F×N))", flush=True)
 
     geom = stl_to_geometry(stl_path)
     t0   = time.perf_counter()
@@ -71,7 +69,6 @@ def _process_shape(shape: dict, res: int) -> dict | None:
     elapsed = time.perf_counter() - t0
 
     print(f"  Done in {elapsed:.1f} s", flush=True)
-    print(f"  phi  min={phi.min():.4f}  max={phi.max():.4f}", flush=True)
     print(f"  Inside fraction: {(phi < 0).mean() * 100:.1f}%", flush=True)
 
     _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -103,15 +100,13 @@ def _build_report(results: list[dict], out_html: Path) -> None:
 
     n = len(results)
     fig = make_subplots(
-        rows=2, cols=n,
-        specs=[[{"type": "xy"}] * n, [{"type": "scene"}] * n],
+        rows=1, cols=n,
+        specs=[[{"type": "scene"}] * n],
         subplot_titles=[
-            *[f"{r['name']}<br>{r['n_tri']:,} tris | {r['res']}³ | {r['time_s']:.0f}s"
-              for r in results],
-            *["φ = 0 surface"] * n,
+            f"{r['name']} — {r['n_tri']:,} tris | {r['res']}³ | {r['time_s']:.1f}s"
+            for r in results
         ],
-        vertical_spacing=0.08,
-        horizontal_spacing=0.12,
+        horizontal_spacing=0.08,
     )
 
     for col, r in enumerate(results, start=1):
@@ -120,28 +115,11 @@ def _build_report(results: list[dict], out_html: Path) -> None:
         res    = r["res"]
         (x0, x1), (y0, y1), (z0, z1) = bounds
 
-        # Cell-centred coordinate arrays matching sample_levelset_3d output
         xs = np.linspace(x0, x1, res, endpoint=False) + (x1 - x0) / (2.0 * res)
         ys = np.linspace(y0, y1, res, endpoint=False) + (y1 - y0) / (2.0 * res)
         zs = np.linspace(z0, z1, res, endpoint=False) + (z1 - z0) / (2.0 * res)
         Z3, Y3, X3 = np.meshgrid(zs, ys, xs, indexing="ij")
 
-        # Row 1 — mid-Z slice heatmap
-        mid  = phi[res // 2]
-        clim = float(np.abs(mid).max()) or 1.0
-        fig.add_trace(
-            go.Heatmap(
-                z=mid, x=xs, y=ys,
-                colorscale="RdBu", reversescale=True,
-                zmid=0.0, zmin=-clim, zmax=clim,
-                showscale=(col == 1),
-                colorbar=dict(title=dict(text="φ"), x=-0.04) if col == 1 else None,
-            ),
-            row=1, col=col,
-        )
-        fig.update_xaxes(scaleanchor=f"y{col if col > 1 else ''}", row=1, col=col)
-
-        # Row 2 — 3-D isosurface at φ = 0
         fig.add_trace(
             go.Isosurface(
                 x=X3.ravel(), y=Y3.ravel(), z=Z3.ravel(),
@@ -153,16 +131,17 @@ def _build_report(results: list[dict], out_html: Path) -> None:
                 lighting=dict(ambient=0.5, diffuse=0.8, specular=0.4, roughness=0.3),
                 lightposition=dict(x=1000, y=1000, z=2000),
             ),
-            row=2, col=col,
+            row=1, col=col,
         )
 
+    fig.update_scenes(aspectmode="data")
     fig.update_layout(
         title=dict(
-            text="Military Shape Gallery — Signed Distance Fields",
+            text="Military Shape Gallery — φ = 0 Surfaces",
             font=dict(size=18),
         ),
-        width=500 * n,
-        height=950,
+        width=600 * n,
+        height=600,
         paper_bgcolor="#1a1a2e",
         plot_bgcolor="#16213e",
         font=dict(color="#e0e0e0"),
@@ -181,8 +160,8 @@ def main() -> None:
         description="Artillery shell & missile STL → SDF demo"
     )
     parser.add_argument(
-        "--res", type=int, default=25,
-        help="Grid resolution per axis (default 25)",
+        "--res", type=int, default=50,
+        help="Grid resolution per axis (default 50)",
     )
     parser.add_argument(
         "--out", type=Path,

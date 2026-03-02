@@ -1,7 +1,7 @@
 `pySdf` is a Python library of signed distance functions (SDFs) for 2D and 3D geometry.
 
 It has two modes of operation:
-- **Pure numpy** (no external dependencies beyond numpy/scipy): evaluate SDFs on grids
+- **Pure numpy** (no external dependencies beyond numpy): evaluate SDFs on grids
   using `sample_levelset_2d` / `sample_levelset_3d`.
 - **AMReX** (optional): fill `MultiFab` grids via `SDFLibrary2D` / `SDFLibrary3D`.
 

@@ -1,14 +1,11 @@
 """nasa_boolean_demo.py — Boolean operations between a NASA STL mesh and analytic shapes.
 
-Demonstrates that geometry_from_stl returns a plain Geometry3D that composes
+Demonstrates that stl_to_geometry returns a plain Geometry3D that composes
 with the same union / subtraction API as analytic primitives (Sphere3D, Box3D).
 
 Shapes
 ------
 * Mars Rover Wheel  (mars_wheel.stl, ~45 K triangles)
-  Normalised aspect: 1.0 x 1.0 x 0.587 — disc with tread pattern.
-  Must be present in the same directory as this script.
-
 * Sphere3D(0.20) shifted to (0.35, 0, 0) — overlaps the wheel rim.
 
 Operations shown (4 panels)
@@ -20,8 +17,8 @@ Operations shown (4 panels)
 
 Usage
 -----
-python examples/stl2sdf/nasa_boolean_demo.py           # res=8,  ~90 s
-python examples/stl2sdf/nasa_boolean_demo.py --res 12  # higher quality, ~3 min
+uv run python examples/stl2sdf/nasa_boolean_demo.py           # res=40
+uv run python examples/stl2sdf/nasa_boolean_demo.py --res 60  # higher quality
 """
 
 from __future__ import annotations
@@ -55,23 +52,13 @@ def _load_wheel():
     """Return a centred, unit-scale Geometry3D for mars_wheel.stl."""
     from stl2sdf._math import _stl_to_triangles
 
-    if not _WHEEL_STL.exists():
-        raise FileNotFoundError(
-            f"{_WHEEL_STL} not found. "
-            "Place mars_wheel.stl in the examples/stl2sdf/ directory."
-        )
-
     tris  = _stl_to_triangles(_WHEEL_STL)
     verts = tris.reshape(-1, 3)
     lo, hi = verts.min(0), verts.max(0)
     centre = (lo + hi) / 2.0
     extent = (hi - lo).max()
 
-    print(
-        f"  Mars Rover Wheel: {len(tris):,} tris  "
-        f"normalised aspect {((hi - lo) / extent).round(2).tolist()}",
-        flush=True,
-    )
+    print(f"  Mars Rover Wheel: {len(tris):,} tris", flush=True)
     return stl_to_geometry(_WHEEL_STL).translate(*(-centre)).scale(1.0 / extent)
 
 
@@ -107,60 +94,34 @@ def _build_report(panels: list[dict], out_html: Path) -> None:
     Z3, Y3, X3 = np.meshgrid(zs, ys, xs, indexing="ij")
 
     fig = make_subplots(
-        rows=2, cols=n,
-        specs=[[{"type": "xy"}] * n, [{"type": "scene"}] * n],
-        subplot_titles=[
-            *[f"{p['label']}<br>{p['time_s']:.0f}s" for p in panels],
-            *["phi=0 surface"] * n,
-        ],
-        vertical_spacing=0.08,
+        rows=1, cols=n,
+        specs=[[{"type": "scene"}] * n],
+        subplot_titles=[p["label"] for p in panels],
         horizontal_spacing=0.04,
     )
 
     for col, p in enumerate(panels, start=1):
-        phi = p["phi"]
-
-        # Mid-Z slice: z=0 cuts through wrench body and sphere equator
-        mid  = phi[res // 2, :, :]   # (ny, nx)
-        clim = float(np.abs(mid).max()) or 1.0
-
-        fig.add_trace(
-            go.Heatmap(
-                z=mid, x=xs, y=ys,
-                colorscale="RdBu", reversescale=True,
-                zmid=0.0, zmin=-clim, zmax=clim,
-                showscale=(col == 1),
-                colorbar=dict(title=dict(text="phi"), x=-0.02) if col == 1 else None,
-            ),
-            row=1, col=col,
-        )
-        fig.update_xaxes(title_text="x", row=1, col=col)
-        fig.update_yaxes(
-            title_text="y",
-            scaleanchor=f"x{col if col > 1 else ''}",
-            row=1, col=col,
-        )
-
         fig.add_trace(
             go.Isosurface(
                 x=X3.ravel(), y=Y3.ravel(), z=Z3.ravel(),
-                value=phi.ravel(),
+                value=p["phi"].ravel(),
                 isomin=0.0, isomax=0.0, surface_count=1,
                 colorscale=[[0, "#4a90d9"], [1, "#4a90d9"]],
                 showscale=False,
                 caps=dict(x_show=False, y_show=False, z_show=False),
                 lighting=dict(ambient=0.6, diffuse=0.8, specular=0.3),
             ),
-            row=2, col=col,
+            row=1, col=col,
         )
 
+    fig.update_scenes(aspectmode="data")
     fig.update_layout(
         title=dict(
-            text="geometry_from_stl + Sphere3D: Mars Wheel boolean ops",
+            text="Mars Wheel + Sphere3D: boolean operations",
             font=dict(size=15),
         ),
-        width=340 * n,
-        height=900,
+        width=380 * n,
+        height=550,
         paper_bgcolor="#1a1a2e",
         plot_bgcolor="#1a1a2e",
         font=dict(color="#e0e0e0"),
@@ -178,8 +139,8 @@ def main() -> None:
         description="Boolean ops: Mars Wheel STL mesh + Sphere3D"
     )
     parser.add_argument(
-        "--res", type=int, default=8,
-        help="Grid resolution per axis (default 8; use 12 for better quality)",
+        "--res", type=int, default=40,
+        help="Grid resolution per axis (default 40)",
     )
     parser.add_argument(
         "--out", type=Path,
@@ -201,15 +162,11 @@ def main() -> None:
 
     panels: list[dict] = []
     for label, geom in operations:
-        print(f"\nSampling '{label}' at res={args.res} ...", flush=True)
+        print(f"Sampling '{label}' at res={args.res} ...", flush=True)
         t0  = time.perf_counter()
         phi = _sample(geom, args.res)
         dt  = time.perf_counter() - t0
-        print(
-            f"  {dt:.1f}s  phi=[{phi.min():.3f}, {phi.max():.3f}]"
-            f"  inside={(phi < 0).mean()*100:.1f}%",
-            flush=True,
-        )
+        print(f"  {dt:.1f}s  inside={(phi < 0).mean()*100:.1f}%", flush=True)
         panels.append({"label": label, "phi": phi, "res": args.res, "time_s": dt})
 
     _build_report(panels, args.out)

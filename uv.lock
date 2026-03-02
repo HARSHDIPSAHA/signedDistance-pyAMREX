@@ -2330,6 +2330,12 @@ wheels = [
 ]
 
 [[package]]
+name = "pysdf"
+version = "0.1.9"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/1d/72/7fa831288ed26b7116ef04c413a51298e68e3b6fab0888f62a85da5b239a/pysdf-0.1.9.tar.gz", hash = "sha256:d0639838ec3adcee3499d37290cda217fc1f0834e30a4167da04ae062087fa7b", size = 47427, upload-time = "2023-07-13T03:51:08.936Z" }
+
+[[package]]
 name = "pytest"
 version = "8.3.5"
 source = { registry = "https://pypi.org/simple" }
@@ -2865,6 +2871,7 @@ dependencies = [
     { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
     { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "pysdf" },
 ]
 
 [package.optional-dependencies]
@@ -2893,6 +2900,7 @@ requires-dist = [
     { name = "matplotlib", marker = "extra == 'viz'", specifier = ">=3.5.0" },
     { name = "numpy", specifier = ">=1.20.0" },
     { name = "plotly", marker = "extra == 'viz'", specifier = ">=5.0" },
+    { name = "pysdf", specifier = ">=0.1.9" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "scikit-image", marker = "extra == 'viz'", specifier = ">=0.19.0" },
     { name = "yt", marker = "extra == 'viz'", specifier = ">=4.2.1" },
