@@ -54,6 +54,7 @@ from .geometry import (
     Union3D,
     Intersection3D,
     Subtraction3D,
+    save_plotly_html_grid,
 )
 from .grid import sample_levelset_3d, save_npy
 from .amrex import SDFLibrary3D
@@ -88,4 +89,7 @@ __all__ = [
     # Complex assemblies
     "NATOFragment",
     "RocketAssembly",
+
+    # Module-level visualisation
+    "save_plotly_html_grid",
 ]

@@ -24,6 +24,6 @@ O(F × N) per .sdf() call where F = triangles and N = query points.
 Use coarse grids for large meshes; a BVH would be needed for production scale.
 """
 
-from .geometry import stl_to_geometry
+from .geometry import stl_to_geometry, mesh_bounds
 
-__all__ = ["stl_to_geometry"]
+__all__ = ["stl_to_geometry", "mesh_bounds"]

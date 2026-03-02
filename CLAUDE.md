@@ -59,35 +59,36 @@ pySdf/
 
 ## Running tests
 ```bash
-uv run pytest tests/        # test_amrex.py skips automatically without pyAMReX
+uv run pytest tests/                          # 299 pass; AMReX tests skip (AMReX not in uv)
+python -m pytest tests/test_amrex_2d.py      # 10 pass  (uses system pip pyAMReX)
+python -m pytest tests/test_amrex_3d.py      # 8 pass   (uses system pip pyAMReX)
 ```
 
-All tests pass without AMReX. `tests/test_amrex.py` skips automatically via
-`pytest.importorskip`.
-
-## Running the gallery scripts
-```bash
-uv run python scripts/gallery_2d.py          # saves gallery_2d.png
-uv run python scripts/gallery_3d.py          # saves gallery_3d.png
-uv run python scripts/gallery_3d.py --res 48 # faster draft render
-```
+All non-AMReX tests pass via `uv run pytest`. AMReX tests use the **system Python** pip
+install (not uv) and must be run in separate processes — `amrex.space2d` and
+`amrex.space3d` are pybind11 modules that cannot coexist in the same process.
 
 ## Running examples
 ```bash
-uv run python examples/stl2sdf/nasa_shapes_demo.py           # res=20; downloads STLs on first run
-uv run python examples/stl2sdf/nasa_shapes_demo.py --res 30  # higher quality
-uv run python examples/stl2sdf/nasa_shapes_demo.py --skip-eros  # skip 200K-tri Eros mesh
-uv run python examples/stl2sdf/nasa_boolean_demo.py          # boolean ops with mesh + sphere
+uv run python examples/sdf2d/gallery_2d.py              # saves examples/sdf2d/output/gallery_2d.png
+uv run python examples/sdf3d/gallery_3d.py              # saves examples/sdf3d/output/gallery_3d.png
+uv run python examples/sdf3d/gallery_3d.py --res 48     # faster draft render
+uv run python examples/sdf3d/union_example.py
+uv run python examples/sdf3d/complex_example.py
+uv run python examples/stl2sdf/military_shapes_demo.py
 ```
 
 ## AMReX installation
-pyAMReX is **not on PyPI**. Install via conda:
+pyAMReX is installed in the **system pip** (not in uv). To install elsewhere:
 
 ```bash
+pip install pyamrex           # if a wheel is available for your platform
+# or via conda:
 conda create -n pyamrex -c conda-forge pyamrex
 ```
 
-Or build from source: https://pyamrex.readthedocs.io/en/latest/install/cmake.html
+`amrex.space2d` and `amrex.space3d` share a pybind11 type name and **cannot be
+imported in the same Python process**. Always run AMReX test files in isolation.
 
 ## Critical design decisions
 

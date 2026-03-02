@@ -72,3 +72,25 @@ def stl_to_geometry(
         return -_sdf_obj(pts).reshape(shape).astype(np.float64)
 
     return _Geometry3D(_sdf)
+
+
+def mesh_bounds(path, pad_frac: float = 0.10) -> tuple:
+    """Return ``((x0,x1),(y0,y1),(z0,z1))`` bounding box of an STL mesh.
+
+    Parameters
+    ----------
+    path:
+        Path to the ``.stl`` file (``str`` or :class:`pathlib.Path`).
+    pad_frac:
+        Fractional padding added on each side; 0.10 → 10 % of each span.
+
+    Returns
+    -------
+    tuple
+        ``((x0,x1),(y0,y1),(z0,z1))`` as a 3-tuple of 2-tuples.
+    """
+    triangles = _stl_to_triangles(path)
+    verts = triangles.reshape(-1, 3)
+    lo, hi = verts.min(axis=0), verts.max(axis=0)
+    pad = pad_frac * (hi - lo)
+    return tuple(zip((lo - pad).tolist(), (hi + pad).tolist()))

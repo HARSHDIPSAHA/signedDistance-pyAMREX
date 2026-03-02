@@ -94,6 +94,72 @@ class Geometry2D:
         rot = np.array([[c, -s], [s, c]])
         return Geometry2D(lambda p: sdf.opTx2D(p, rot, np.zeros(2), self.sdf))
 
+    # ------------------------------------------------------------------
+    # Visualisation helpers
+    # ------------------------------------------------------------------
+
+    def save_png(
+        self,
+        path,
+        *,
+        bounds=((-1.0, 1.0), (-1.0, 1.0)),
+        resolution=(512, 512),
+        title: str = "",
+    ) -> None:
+        """Sample the SDF on a 2-D grid and save a heatmap PNG.
+
+        Parameters
+        ----------
+        path:
+            Output ``str`` or :class:`pathlib.Path`; parent dir created
+            automatically.
+        bounds:
+            ``((x0,x1),(y0,y1))`` domain extents.
+        resolution:
+            ``(nx,ny)`` grid resolution (default 512×512).
+        title:
+            Figure title.
+        """
+        from pathlib import Path
+        import warnings
+
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError as exc:
+            print(f"  save_png: {exc} — skipping")
+            return
+
+        from .grid import sample_levelset_2d
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            phi = sample_levelset_2d(self, bounds, resolution)
+
+        (x0, x1), (y0, y1) = bounds
+        extent = [x0, x1, y0, y1]
+        lim = max(float(np.nanmax(np.abs(phi))), 1e-6)
+
+        fig, ax = plt.subplots(figsize=(5, 5), facecolor="#111")
+        ax.set_facecolor("#111")
+        ax.set_xticks([]); ax.set_yticks([])
+        for spine in ax.spines.values():
+            spine.set_edgecolor("#444")
+        ax.imshow(phi, origin="lower", extent=extent,
+                  cmap="seismic", vmin=-lim, vmax=lim, interpolation="bilinear")
+        try:
+            ax.contour(phi, levels=[0.0], colors="white", linewidths=1.0,
+                       extent=extent)
+        except Exception:
+            pass
+        ax.set_title(title, color="white", fontsize=10)
+        plt.tight_layout(pad=0.3)
+        fig.savefig(path, dpi=150, bbox_inches="tight", facecolor="#111")
+        plt.close(fig)
+        print(f"  Saved: {path}")
+
 
 # ===========================================================================
 # Primitive shapes
