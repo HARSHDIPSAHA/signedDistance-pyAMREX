@@ -54,8 +54,6 @@ uv run python -c "from sdf2d import Circle2D; print('sdf2d OK')"
 uv run python -c "from stl2sdf import stl_to_geometry; print('stl2sdf OK')"
 ```
 
----
-
 ## pyAMReX (optional)
 
 **pyAMReX is not on PyPI** — `pip`/`spack`/`brew` installs are listed as "coming soon"
@@ -64,8 +62,6 @@ each with different trade-offs.
 
 > **Dimension constraint:** Only one space dimension can be active per Python process.
 > Import `amrex.space2d` *or* `amrex.space3d`, not both simultaneously.
-
----
 
 ### Method A — conda (CPU only, recommended for most users)
 
@@ -92,8 +88,6 @@ pytest tests/   # test_amrex.py will now run instead of skipping
 
 > **Note:** In the conda env you use `pip install -e .` directly, not `uv sync`.
 > uv manages its own `.venv`; conda manages its own env. They are separate.
-
----
 
 ### Method B — build from source (GPU / MPI / custom dimensions)
 
@@ -139,8 +133,6 @@ uv pip install -e .   # if targeting the uv .venv
 
 Full guide: [pyamrex.readthedocs.io — cmake build](https://pyamrex.readthedocs.io/en/latest/install/cmake.html)
 
----
-
 ### Method C — inject a pre-built wheel into the uv venv
 
 If you have already built pyAMReX from source and have a `.whl` file (produced
@@ -156,8 +148,6 @@ This keeps uv as the single environment manager.
 > **Caveat:** uv will not track this wheel in `uv.lock` (it's not a PyPI package),
 > so the installation is not reproducible from the lockfile alone. Document the
 > wheel source and version in your project notes.
-
----
 
 ## Summary
 

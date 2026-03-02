@@ -1,45 +1,18 @@
-# SDF Library API Documentation
-
-Reference guide for the `sdf2d`, `sdf3d`, and `stl2sdf` packages.
-
-## Table of Contents
-
-1. [Installation](#installation)
-2. [What is implemented](#what-is-implemented)
-3. [Quick start](#quick-start)
-4. [2D API — `sdf2d`](#2d-api--sdf2d)
-5. [3D API — `sdf3d`](#3d-api--sdf3d)
-6. [STL → SDF — `stl2sdf`](#stl--sdf--stl2sdf)
-7. [AMReX integration](#amrex-integration)
-8. [Low-level math — `sdf2d.primitives` / `sdf3d.primitives`](#low-level-math--sdf2dprimitives--sdf3dprimitives)
-9. [Tips](#tips)
-
----
-
-## Installation
-
-```bash
-# Core library (numpy only)
-uv sync
-
-# With visualization (plotly, matplotlib, scikit-image)
-uv sync --extra viz
-
-# With dev tools
-uv sync --extra dev
-```
-
-pyAMReX is not on PyPI. See [INSTALLATION.md](INSTALLATION.md) for all three
-methods (conda, source build, wheel injection).
-
----
+1. [What is implemented](#what-is-implemented)
+2. [Quick start](#quick-start)
+3. [2D API — `sdf2d`](#2d-api--sdf2d)
+4. [3D API — `sdf3d`](#3d-api--sdf3d)
+5. [STL → SDF — `stl2sdf`](#stl--sdf--stl2sdf)
+6. [AMReX integration](#amrex-integration)
+7. [Low-level math — `sdf2d.primitives` / `sdf3d.primitives`](#low-level-math--sdf2dprimitives--sdf3dprimitives)
+8. [Tips](#tips)
 
 ## What is implemented
 
 | Feature | Where |
 |---------|-------|
-| ~50 2D SDF primitives | `sdf2d.primitives`, `sdf2d.geometry` |
-| ~30 3D SDF primitives + warps + smooth ops | `sdf3d.primitives`, `sdf3d.geometry` |
+| 2D SDF primitives | `sdf2d.primitives`, `sdf2d.geometry` |
+| 3D SDF primitives + warps + smooth ops | `sdf3d.primitives`, `sdf3d.geometry` |
 | Boolean ops (Union, Intersection, Subtraction) | both packages |
 | Smooth boolean ops (smooth union/subtraction/intersection) | `sdf3d.primitives` |
 | Transforms (translate, rotate, scale, round, onion, elongate) | both packages |
@@ -48,8 +21,6 @@ methods (conda, source build, wheel injection).
 | AMReX MultiFab output | `sdf2d.amrex`, `sdf3d.amrex` |
 | Complex assemblies | `sdf3d.examples` (`NATOFragment`, `RocketAssembly`) |
 | Comprehensive unit tests | `tests/` |
-
----
 
 ## Quick start
 
@@ -87,8 +58,6 @@ try:
 finally:
     amr.finalize()
 ```
-
----
 
 ## 2D API — `sdf2d`
 
@@ -228,8 +197,6 @@ mf = lib.intersect(mf1, mf2)
 mf = lib.negate(mf)
 ```
 
----
-
 ## 3D API — `sdf3d`
 
 ### Base class
@@ -358,8 +325,6 @@ mf = lib.intersect(mf1, mf2)
 mf = lib.negate(mf)
 ```
 
----
-
 ## STL → SDF — `stl2sdf`
 
 Converts binary or ASCII STL meshes into a `Geometry3D` object using pure NumPy.
@@ -401,8 +366,6 @@ uv run python examples/stl2sdf/nasa_shapes_demo.py --skip-eros  # skip 200K-tri 
 uv run python examples/stl2sdf/nasa_boolean_demo.py          # mesh union/subtract with sphere
 ```
 
----
-
 ## AMReX integration
 
 Both `SDFLibrary2D` and `SDFLibrary3D` require AMReX to be installed and initialized:
@@ -438,8 +401,6 @@ for mfi in mf:
 
 See [INSTALLATION.md](INSTALLATION.md) for all three pyAMReX installation methods.
 
----
-
 ## Low-level math — `sdf2d.primitives` / `sdf3d.primitives`
 
 ```python
@@ -464,8 +425,6 @@ Functions follow `sd<Shape>` (signed) or `ud<Shape>` (unsigned); operators use `
 **Boolean:** `opUnion`, `opSubtraction`, `opIntersection`, `opSmoothUnion`, `opSmoothSubtraction`, `opSmoothIntersection`
 
 **Warp/space:** `opRound`, `opOnion`, `opElongate1`, `opElongate2`, `opRevolution`, `opExtrusion`, `opTwist`, `opCheapBend`, `opTx`, `opTx2D`, `opScale`, `opSymX`, `opSymXZ`, `opRepetition`, `opLimitedRepetition`, `opDisplace`
-
----
 
 ## Tips
 

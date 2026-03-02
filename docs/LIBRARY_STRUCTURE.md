@@ -2,8 +2,6 @@
 
 A 2D and 3D Signed Distance Function library with STL mesh conversion and optional pyAMReX integration.
 
----
-
 ### Top-level
 
 - `_sdf_common.py` — Shared math helpers (`vec2`/`vec3`, `length`, `dot`, `clamp`, boolean ops) used by all packages.
@@ -78,8 +76,6 @@ All tests pass with `pytest` and require only `numpy`. AMReX is not needed.
 uv run pytest tests/ -v
 ```
 
----
-
 ### `scripts/` contents
 
 Rendering and visualization utilities. Not part of the library API; not installed.
@@ -87,8 +83,6 @@ Rendering and visualization utilities. Not part of the library API; not installe
 - `gallery_2d.py` — Renders all `sdf2d` shapes on a single page (requires matplotlib).
 - `gallery_3d.py` — Renders all `sdf3d` primitives (requires matplotlib + scikit-image).
 - `render_surface_from_plotfile.py` — Renders an AMReX plotfile SDF=0 surface (requires pyAMReX + yt).
-
----
 
 ### `examples/` contents
 
@@ -103,8 +97,6 @@ Standalone runnable demos. Outputs (PNG, HTML, NPY) are written to `examples/`.
 | `sdf3d/complex_example.py` | Chains all four operations, one PNG per step |
 | `stl2sdf/nasa_shapes_demo.py` | Downloads 4 NASA meshes (Orion/CubeSat/wheel/Eros), saves Plotly HTML report |
 | `stl2sdf/nasa_boolean_demo.py` | Boolean ops demo: mesh union/subtract with analytic sphere |
-
----
 
 ### Design
 

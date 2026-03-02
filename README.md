@@ -4,68 +4,20 @@ A library of signed distance functions (SDFs) for 2D and 3D geometry, implemente
 SDF formulas are adapted from [iquilezles.org](https://iquilezles.org/articles/distfunctions/).
 Optional [pyAMReX](https://pyamrex.readthedocs.io/en/latest/) integration provides `MultiFab` output for parallel solvers.
 
-## Installation
-
-### Core library (NumPy only)
-
-```bash
-uv sync
-```
-
-### With visualization extras (matplotlib, plotly, scikit-image)
-
-```bash
-uv sync --extra viz
-```
-
-### Development (adds pytest)
-
-```bash
-uv sync --extra dev
-```
-
-### With pyAMReX (optional — for MultiFab/parallel grid output)
-
-**pyAMReX is not on PyPI.** Choose one of the methods below.
-
-#### Option A — conda (CPU only, easiest)
-
-```bash
-conda create -n pyamrex -c conda-forge pyamrex
-conda activate pyamrex
-uv sync
-```
-
-#### Option B — build from source (GPU / MPI / custom dimensions)
-
-```bash
-git clone https://github.com/AMReX-Codes/pyamrex.git $HOME/src/pyamrex
-cd $HOME/src/pyamrex
-cmake -S . -B build -DAMReX_SPACEDIM="1;2;3"
-cmake --build build -j 4 --target pip_install
-```
-
-> **Dimension constraint:** Only one space dimension can be imported per Python
-> process (`amrex.space2d` *or* `amrex.space3d`, not both simultaneously).
-
-See the full guides:
-[conda install](https://pyamrex.readthedocs.io/en/latest/install/users.html) ·
-[cmake build](https://pyamrex.readthedocs.io/en/latest/install/cmake.html)
-
 ## Documentation
 
-- **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)**: Complete API reference for all packages
-- **[LIBRARY_STRUCTURE.md](LIBRARY_STRUCTURE.md)**: Folder structure and design overview
-- **[INSTALLATION.md](INSTALLATION.md)**: Detailed installation and troubleshooting
+- **[INSTALLATION.md](docs/INSTALLATION.md)**: Detailed installation and troubleshooting
+- **[API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md)**: Complete API reference for all packages
+- **[LIBRARY_STRUCTURE.md](docs/LIBRARY_STRUCTURE.md)**: Folder structure and design overview
 - **[examples/](examples/)**: Standalone runnable examples
 
-## Package overview
+## Packages overview
 
 | Package | Purpose |
 |---------|---------|
 | `sdf2d` | 2D geometry classes, grid sampling, optional AMReX output |
 | `sdf3d` | 3D geometry classes, grid sampling, optional AMReX output |
-| `stl2sdf` | Convert STL mesh → SDF grid (pure NumPy, watertight meshes) |
+| `stl2sdf` | Convert STL mesh → SDF grid (pure NumPy, watertight meshes only) |
 
 ## Files
 
@@ -77,7 +29,6 @@ See the full guides:
 - `tests/` — pytest suite; no AMReX required (`test_amrex.py` skips automatically)
 - `scripts/` — Gallery scripts and AMReX plotfile renderer
 - `examples/` — Standalone demos; outputs written to `examples/`
-- `gallery_2d.png`, `gallery_3d.png` — Pre-rendered shape galleries
 
 ## Running tests
 
@@ -87,24 +38,11 @@ uv run pytest tests/ -v
 
 All tests pass without AMReX. `tests/test_amrex.py` skips automatically via `pytest.importorskip`.
 
-## Gallery scripts
-
-```bash
-# All ~50 sdf2d shapes (requires matplotlib)
-uv run python scripts/gallery_2d.py --out gallery_2d.png
-
-# All sdf3d primitives (requires matplotlib + scikit-image)
-uv run python scripts/gallery_3d.py --out gallery_3d.png --res 64
-uv run python scripts/gallery_3d.py --res 48  # faster draft
-```
-
-### 2D shape gallery (`sdf2d`)
+## Shapes
 
 ![sdf2d gallery](docs/gallery_2d.png)
 
 _Blue = inside (φ < 0), red = outside (φ > 0), white contour = surface (φ = 0)._
-
-### 3D shape gallery (`sdf3d`)
 
 ![sdf3d 3D gallery](docs/gallery_3d.png)
 
@@ -181,19 +119,9 @@ finally:
     amr.finalize()
 ```
 
-## How the two evaluation paths compare
-
 | Path | Requires | Returns | Use case |
 |------|----------|---------|----------|
 | **NumPy** | `numpy` only | `np.ndarray` | design, testing, visualization |
 | **AMReX** | pyAMReX via conda | `amr.MultiFab` | parallel solver input |
 
 Both paths use identical SDF math from `primitives.py`.
-
-## SDF sign convention
-
-| Value | Meaning |
-|-------|---------|
-| φ < 0 | inside the solid |
-| φ = 0 | on the surface |
-| φ > 0 | outside the solid |
