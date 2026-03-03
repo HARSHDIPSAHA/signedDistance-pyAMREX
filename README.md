@@ -2,7 +2,7 @@
 
 A library of signed distance functions (SDFs) for 2D and 3D geometry, implemented in pure NumPy.
 SDF formulas are adapted from [iquilezles.org](https://iquilezles.org/articles/distfunctions/).
-Optional [pyAMReX](https://pyamrex.readthedocs.io/en/latest/) integration provides `MultiFab` output for parallel solvers.
+[pyAMReX](https://pyamrex.readthedocs.io/en/latest/) integration provides `MultiFab` output for parallel solvers.
 
 ## Documentation
 
