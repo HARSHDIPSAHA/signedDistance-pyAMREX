@@ -10,7 +10,7 @@ class ImageExtruded3D:
     def __init__(self, hdf5_path, dataset_path, physical_size_xy, thickness_z):
         self.thickness_z = thickness_z
         
-        # 1. Load the 2D SDF array from sir's uSCMAN results
+        # 1. Load the 2D SDF array  uSCMAN results
         with h5py.File(hdf5_path, 'r') as f:
             if dataset_path not in f:
                 raise KeyError(f"Could not find {dataset_path} in {hdf5_path}")
