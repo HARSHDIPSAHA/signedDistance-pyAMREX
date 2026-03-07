@@ -1,0 +1,13 @@
+Running: "C:\Users\arkma\LLNL\VisIt3.4.2\cli.exe" -nowin -s C:\Users\arkma\Documents\GitHub\pySdf\examples\amrex\visit_render_2d.py
+Running: "C:\Users\arkma\LLNL\VisIt3.4.2\viewer.exe" -noint -nowin -host 127.0.0.1 -port 5601 -key 94d53701554ce0350c6b
+Running: "C:\Users\arkma\LLNL\VisIt3.4.2\mdserver.exe" -idle-timeout 480 -host 127.0.0.1 -port 5602 -key 947d4e78f68911080e0c
+Running: "C:\Users\arkma\LLNL\VisIt3.4.2\engine_ser.exe" -idle-timeout 480 -host 127.0.0.1 -port 5603 -key 947d4e78f68911080e0c
+VisIt: Message - Rendering window 1...
+VisIt: Message - Saving window 1...
+VisIt: Message - Saved C:/Users/arkma/Documents/GitHub/pySdf/examples/amrex/output\circle.png
+!
+! WARNING: Maximum of long int, 2147483647, might be too small for big runs.
+!
+!
+! WARNING: Maximum of long int, 2147483647, might be too small for big runs.
+!
