@@ -2,28 +2,20 @@
 
 Usage::
 
-    from sdf3d import SDFLibrary3D
-    from sdf3d.complex import RocketAssembly
+    from sdf3d.examples import RocketAssembly
 
-    rocket_mf, rocket_geom = RocketAssembly(lib, body_radius=0.15)
+    geom = RocketAssembly(body_radius=0.15)
 """
 
 from __future__ import annotations
-
-from typing import Tuple, TYPE_CHECKING
 
 import numpy as np
 
 from .. import primitives as sdf
 from sdf3d.geometry import Sphere3D, Box3D, Union3D, Geometry3D
 
-if TYPE_CHECKING:
-    from sdf3d.amrex import SDFLibrary3D
-    import amrex.space3d as amr
-
 
 def RocketAssembly(
-    lib: "SDFLibrary3D",
     body_radius: float = 0.15,
     L_extra: float = 0.40,
     nose_len: float = 0.25,
@@ -31,7 +23,7 @@ def RocketAssembly(
     fin_height: float = 0.18,
     fin_thickness: float = 0.03,
     n_fins: int = 4,
-) -> "Tuple[amr.MultiFab, Geometry3D]":
+) -> Geometry3D:
     """Build a parametric rocket assembly.
 
     The rocket consists of:
@@ -42,8 +34,6 @@ def RocketAssembly(
 
     Parameters
     ----------
-    lib:
-        An :class:`~sdf3d.amrex.SDFLibrary3D` instance.
     body_radius:
         Sphere radius of the body capsule (m).
     L_extra:
@@ -61,8 +51,9 @@ def RocketAssembly(
 
     Returns
     -------
-    tuple
-        ``(MultiFab, Geometry3D)`` — AMReX level-set field and geometry.
+    Geometry3D
+        The composable geometry object.  To fill an AMReX MultiFab, call
+        ``lib.from_geometry(RocketAssembly(...))`` yourself.
     """
     R = body_radius
 
@@ -106,5 +97,4 @@ def RocketAssembly(
     if fins_geom is not None:
         rocket = Union3D(rocket, fins_geom)
 
-    rocket_mf = lib.from_geometry(rocket)
-    return rocket_mf, rocket
+    return rocket

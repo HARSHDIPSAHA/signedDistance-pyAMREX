@@ -18,6 +18,17 @@ from stl2sdf._math import _stl_to_triangles
 from sdf3d.geometry import Geometry3D
 from sdf3d import Sphere3D
 
+try:
+    import pysdf  # noqa: F401
+    _HAS_PYSDF = True
+except ImportError:
+    _HAS_PYSDF = False
+
+pysdf_required = pytest.mark.skipif(
+    not _HAS_PYSDF,
+    reason="pysdf not installed (pip install pysdf or uv sync --extra stl)",
+)
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -102,6 +113,7 @@ class TestStlToTriangles:
 # stl_to_geometry (public API)
 # ---------------------------------------------------------------------------
 
+@pysdf_required
 class TestStlToGeometry:
     def test_returns_geometry3d(self, tmp_path):
         stl = tmp_path / "box.stl"

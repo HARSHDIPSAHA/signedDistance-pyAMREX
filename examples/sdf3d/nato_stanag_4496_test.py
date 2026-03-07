@@ -7,16 +7,10 @@ from sdf3d import Box3D
 from sdf3d.examples import NATOFragment
 
 
-class _MockLib:
-    def from_geometry(self, geom):
-        return geom
-
-
 # Fragment dimensions (STANAG-4496 standard)
 diameter = 14.30e-3   # 14.30 mm
-lib = _MockLib()
-_, fragment_geom = NATOFragment(lib, diameter=diameter, L_over_D=1.09,
-                                cone_angle_deg=20.0)
+fragment_geom = NATOFragment(diameter=diameter, L_over_D=1.09,
+                             cone_angle_deg=20.0)
 total_length = diameter * 1.09   # ~ 15.56 mm
 
 # Fragment alone

@@ -25,18 +25,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
+try:
+    from skimage import measure as _skimage_measure
+except ImportError:
+    raise SystemExit(
+        "scikit-image is required for 3-D rendering.\n"
+        "  pip install scikit-image"
+    )
+
 from sdf2d import primitives as sdf2d
 from sdf3d import primitives as sdf
-from sdf3d.examples import NATOFragment, RocketAssembly
 
-
-# ---------------------------------------------------------------------------
-# Minimal stand-in for SDFLibrary3D (no AMReX required)
-# ---------------------------------------------------------------------------
-
-class _MockLib:
-    def from_geometry(self, geom):
-        return geom
+_LO, _HI = -0.55, 0.55
 
 
 # ---------------------------------------------------------------------------
@@ -51,10 +51,6 @@ def _make_shapes() -> list[tuple[str, object]]:
     base_sphere     = lambda p: sdf.sdSphere(p, S)
     base_box        = lambda p: sdf.sdBox(p, bh)
     base_round_box  = lambda p: sdf.sdRoundBox(p, bh, r)
-
-    def rot_z(th):
-        c, s = np.cos(th), np.sin(th)
-        return np.array([[c, -s, 0.], [s, c, 0.], [0., 0., 1.]])
 
     shapes = [
         # --- primitives ---
@@ -172,63 +168,26 @@ def _make_shapes() -> list[tuple[str, object]]:
         ("opCheapBend",
          lambda p: sdf.opCheapBend(p, base_round_box, 5.0)),
         ("opTx",
-         lambda p: sdf.opTx(p, rot_z(np.deg2rad(30.)), np.array([0.1, 0.1, 0.]), base_box)),
-        # --- examples ---
-        *_make_example_shapes(),
+         lambda p: sdf.opTx(p, np.array([[0.866, -0.5, 0.], [0.5, 0.866, 0.], [0., 0., 1.]]),
+                             np.array([0.1, 0.1, 0.]), base_box)),
     ]
     return shapes
-
-
-def _make_example_shapes() -> list[tuple[str, object]]:
-    lib = _MockLib()
-
-    # NATOFragment: diameter=0.3 → spans Z=[0, 0.75]; centre at Z=0.375
-    _, nato_geom = NATOFragment(lib, diameter=0.3)
-    _nato_offset = np.array([0.0, 0.0, -0.375])
-    nato_func = lambda p: nato_geom.sdf(p - _nato_offset)
-
-    # RocketAssembly: scaled down to fit in [-0.55, 0.55] domain
-    _, rocket_geom = RocketAssembly(
-        lib, body_radius=0.08, L_extra=0.18, nose_len=0.12,
-        fin_span=0.06, fin_height=0.08, fin_thickness=0.018,
-    )
-    rocket_func = lambda p: rocket_geom.sdf(p)
-
-    return [
-        ("NATOFragment", nato_func),
-        ("RocketAssembly", rocket_func),
-    ]
 
 
 # ---------------------------------------------------------------------------
 # Evaluation + marching cubes
 # ---------------------------------------------------------------------------
 
-def _build_volume(n: int, lo: float = -0.55, hi: float = 0.55) -> np.ndarray:
-    coords = np.linspace(lo, hi, n)
-    Z, Y, X = np.meshgrid(coords, coords, coords, indexing="ij")
-    return sdf.vec3(X, Y, Z)
-
-
 def _eval_surface(sdf_func, p_vol: np.ndarray, n: int):
     """Return (verts, faces) of the zero isosurface, or None on failure."""
-    try:
-        from skimage import measure
-    except ImportError:
-        raise SystemExit(
-            "scikit-image is required for 3-D rendering.\n"
-            "  pip install scikit-image"
-        )
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             vals = sdf_func(p_vol).astype(float)
         if vals.max() <= 0 or vals.min() >= 0:
             return None
-        verts, faces, _, _ = measure.marching_cubes(vals, level=0.0)
-        lo, hi = -0.55, 0.55
-        scale = (hi - lo) / (n - 1)
-        verts = verts * scale + lo
+        verts, faces, _, _ = _skimage_measure.marching_cubes(vals, level=0.0)
+        verts = verts * (_HI - _LO) / (n - 1) + _LO
         return verts, faces
     except Exception:
         return None
@@ -242,7 +201,9 @@ def render_gallery(shapes, out_path: Path, ncols: int = 8, res: int = 80) -> Non
     nrows = (len(shapes) + ncols - 1) // ncols
     fig = plt.figure(figsize=(ncols * 3.0, nrows * 3.0), facecolor="#111111")
 
-    p_vol = _build_volume(res)
+    coords = np.linspace(_LO, _HI, res)
+    Z, Y, X = np.meshgrid(coords, coords, coords, indexing="ij")
+    p_vol = sdf.vec3(X, Y, Z)
 
     _FACE_COLOR = np.array([1.0, 0.82, 0.2])
     _VIEW_ELEV  = 20
@@ -275,8 +236,7 @@ def render_gallery(shapes, out_path: Path, ncols: int = 8, res: int = 80) -> Non
                                 edgecolors="none", alpha=1.0)
         ax.add_collection3d(mesh)
 
-        lo, hi = -0.55, 0.55
-        ax.set_xlim(lo, hi); ax.set_ylim(lo, hi); ax.set_zlim(lo, hi)
+        ax.set_xlim(_LO, _HI); ax.set_ylim(_LO, _HI); ax.set_zlim(_LO, _HI)
         ax.set_box_aspect([1, 1, 1])
         ax.view_init(elev=_VIEW_ELEV, azim=_VIEW_AZIM)
 

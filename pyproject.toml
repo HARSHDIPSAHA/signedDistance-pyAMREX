@@ -10,17 +10,33 @@ readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
     "numpy>=1.20.0",
-    "pysdf>=0.1.9",
 ]
 
+# User-facing extras: install with `pip install sdf-library[viz]` or `[stl]`
 [project.optional-dependencies]
 viz = [
     "matplotlib>=3.5.0",
- "scikit-image>=0.19.0",
- "plotly>=5.0",
- "yt>=4.2.1",
+    "scikit-image>=0.19.0",
+    "plotly>=5.0",
+    "yt>=4.2.1",
 ]
-dev = ["pytest>=7.0"]
+stl = [
+    # C++ library for fast SDF evaluation of STL meshes.
+    # Requires a C++14 compiler; not always available as a pre-built wheel.
+    # Install: pip install pysdf   (or conda install -c conda-forge pysdf)
+    "pysdf>=0.1.9",
+]
+
+# Developer tools: install with `uv sync --group dev`
+# These are NOT shipped to end users.
+[dependency-groups]
+dev = [
+    "pytest>=7.0",
+    "ty>=0.0.1",
+    "h5py>=3.0",
+    "scipy>=1.7",
+]
+
 # pyAMReX is NOT on PyPI — install separately via:
 #   conda create -n pyamrex -c conda-forge pyamrex
 # No entry here; uv.lock only covers resolvable packages.

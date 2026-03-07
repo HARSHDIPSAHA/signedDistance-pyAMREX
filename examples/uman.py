@@ -85,7 +85,7 @@ def save_visuals(phi, bounds, name, title):
     # 1. SAVE PNG (Matplotlib)
     plt.figure(figsize=(6, 5))
     plt.title(title, fontweight='bold')
-    plt.imshow(phi, extent=[x0, x1, y0, y1], origin='lower', cmap='RdBu_r')
+    plt.imshow(phi, extent=(x0, x1, y0, y1), origin='lower', cmap='RdBu_r')
     plt.colorbar(label='Signed Distance (φ < 0 is Inside)')
     plt.contour(phi, levels=[0.0], extent=[x0, x1, y0, y1], colors='black', linewidths=2.5)
     plt.savefig(f"outputs/{name}.png", dpi=200, bbox_inches='tight')

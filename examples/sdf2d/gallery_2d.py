@@ -21,13 +21,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from sdf2d import sample_levelset_2d
+from sdf2d.geometry import Geometry2D
 
 
 # ---------------------------------------------------------------------------
 # Shape catalogue — (label, geometry_object)
 # ---------------------------------------------------------------------------
 
-def _make_shapes() -> list[tuple[str, object]]:
+def _make_shapes() -> list[tuple[str, Geometry2D]]:
     from sdf2d import (
         Circle2D, Box2D, RoundedBox2D, OrientedBox2D, Segment2D,
         Rhombus2D, Trapezoid2D, Parallelogram2D,
@@ -111,7 +112,7 @@ def _eval_shape(geom) -> np.ndarray | None:
         return None
 
 
-def render_gallery(shapes: list[tuple[str, object]], out_path: Path, ncols: int = 7) -> None:
+def render_gallery(shapes: list[tuple[str, Geometry2D]], out_path: Path, ncols: int = 7) -> None:
     nrows = (len(shapes) + ncols - 1) // ncols
     fig, axes = plt.subplots(
         nrows, ncols,
