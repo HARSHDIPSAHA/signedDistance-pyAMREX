@@ -3,15 +3,12 @@
 Usage::
 
     uv run python examples/sdf2d/gallery_2d.py                   # saves examples/sdf2d/output/gallery_2d.png
-    uv run python examples/sdf2d/gallery_2d.py --out my_file.png # custom output path
 
 Requirements: numpy, matplotlib  (no AMReX needed)
 """
 from __future__ import annotations
 
-import argparse
 import sys
-import warnings
 from pathlib import Path
 
 # Ensure the repo root (two levels above examples/sdf2d/) is importable
@@ -102,16 +99,6 @@ _RES    = (512, 512)
 _EXTENT = [-1, 1, -1, 1]
 
 
-def _eval_shape(geom) -> np.ndarray | None:
-    """Evaluate SDF on grid; return None on failure."""
-    try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            return sample_levelset_2d(geom, _BOUNDS, _RES)
-    except Exception:
-        return None
-
-
 def render_gallery(shapes: list[tuple[str, SDF2D]], out_path: Path, ncols: int = 7) -> None:
     nrows = (len(shapes) + ncols - 1) // ncols
     fig, axes = plt.subplots(
@@ -122,7 +109,7 @@ def render_gallery(shapes: list[tuple[str, SDF2D]], out_path: Path, ncols: int =
     axes = np.asarray(axes).ravel()
 
     for ax, (label, geom) in zip(axes, shapes):
-        phi = _eval_shape(geom)
+        phi = sample_levelset_2d(geom, _BOUNDS, _RES)
         ax.set_facecolor("#111111")
         ax.set_xticks([])
         ax.set_yticks([])
@@ -156,19 +143,6 @@ def render_gallery(shapes: list[tuple[str, SDF2D]], out_path: Path, ncols: int =
     print(f"Saved: {out_path}")
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Render all sdf2d shapes to a single PNG gallery.")
-    parser.add_argument("--out", default="gallery_2d.png", help="Output PNG path")
-    parser.add_argument("--cols", type=int, default=7, help="Number of columns (default 7)")
-    args = parser.parse_args()
-
-    out = Path(args.out)
-    if out.parent == Path('.'):
-        out = Path("output") / out
-    out.parent.mkdir(parents=True, exist_ok=True)
-    shapes = _make_shapes()
-    render_gallery(shapes, out, ncols=args.cols)
-
-
 if __name__ == "__main__":
-    main()
+    output = Path(__file__).parent / "output" / "gallery_2d.png"
+    render_gallery(_make_shapes(), output, ncols=7)

@@ -114,8 +114,7 @@ class SDFMultiFab2D:
     def from_geometry(self, geometry: "SDF2D") -> "amr.MultiFab":
         """Evaluate *geometry* on the AMReX grid and return a MultiFab.
 
-        This is a thin convenience wrapper — equivalent to::
-
+        This is a thin convenience wrapper — equivalent to:
             mf = lib.create_multifab()
             lib.fill_multifab(mf, geometry.sdf)
 

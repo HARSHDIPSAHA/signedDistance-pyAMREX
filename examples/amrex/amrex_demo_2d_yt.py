@@ -1,8 +1,5 @@
 """2D AMReX SDF demo.
-
-Demonstrates the full AMReX-native visualization pipeline for 2D shapes:
-
-    Geometry → SDFMultiFab2D → MultiFab → write_single_level_plotfile
+    amr.Geometry → SDFMultiFab2D → MultiFab → write_single_level_plotfile
     → yt.load → SlicePlot → PNG
 
 Run with:
@@ -16,22 +13,8 @@ Note: This script requires amrex.space2d (pyAMReX) and yt.
 
 import os
 import sys
-
-# ---------------------------------------------------------------------------
-# AMReX + yt imports
-# ---------------------------------------------------------------------------
-try:
-    import amrex.space2d as amr
-except ImportError as exc:
-    raise SystemExit(
-        "amrex.space2d not found. Install via conda:\n"
-        "  conda install pyamrex -c conda-forge"
-    ) from exc
-
-try:
-    import yt
-except ImportError as exc:
-    raise SystemExit("yt not found. Install via: pip install yt") from exc
+import amrex.space2d as amr
+import yt
 
 # pySdf root on the path so we can import SDFMultiFab2D
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))

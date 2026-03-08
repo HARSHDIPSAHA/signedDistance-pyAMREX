@@ -2,7 +2,7 @@
 
 Demonstrates the full AMReX-native visualization pipeline for 3D shapes:
 
-    Geometry → SDFMultiFab3D → MultiFab → write_single_level_plotfile
+    amr.Geometry → SDFMultiFab3D → MultiFab → write_single_level_plotfile
     → yt (SurfaceSource or marching-cubes fallback) → PNG
 
 Run with:
@@ -16,17 +16,7 @@ with amrex.space2d in the same Python interpreter (pybind11 type-name conflict).
 
 import os
 import sys
-
-# ---------------------------------------------------------------------------
-# AMReX + renderer imports
-# ---------------------------------------------------------------------------
-try:
-    import amrex.space3d as amr
-except ImportError as exc:
-    raise SystemExit(
-        "amrex.space3d not found. Install via conda:\n"
-        "  conda install pyamrex -c conda-forge"
-    ) from exc
+import amrex.space3d as amr
 
 # render_surface lives in the same directory as this script
 sys.path.insert(0, os.path.dirname(__file__))

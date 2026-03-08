@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from typing import Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -11,8 +10,8 @@ import numpy.typing as npt
 from .geometry import SDF2D
 
 _Array = npt.NDArray[np.floating]
-_Bounds2D = Tuple[Tuple[float, float], Tuple[float, float]]
-_Resolution2D = Tuple[int, int]
+_Bounds2D = tuple[tuple[float, float], tuple[float, float]]
+_Resolution2D = tuple[int, int]
 
 
 def sample_levelset_2d(

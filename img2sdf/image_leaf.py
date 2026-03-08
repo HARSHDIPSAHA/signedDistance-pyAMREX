@@ -2,7 +2,6 @@ import numpy as np
 import h5py
 from scipy.interpolate import RegularGridInterpolator
 
-# Import your base class!
 from sdf3d import SDF3D
 
 class ImageExtruded3D(SDF3D):

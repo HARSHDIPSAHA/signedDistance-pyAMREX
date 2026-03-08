@@ -253,28 +253,6 @@ def render_gallery(shapes, out_path: Path, ncols: int = 8, res: int = 80) -> Non
     print(f"Saved: {out_path}")
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Render all sdf3d 3D primitives to a single PNG gallery."
-    )
-    parser.add_argument(
-        "--out", default="gallery_3d.png",
-        help="Output PNG path",
-    )
-    parser.add_argument("--cols", type=int, default=8, help="Number of columns (default 8)")
-    parser.add_argument(
-        "--res", type=int, default=48,
-        help="Grid resolution per axis (default 48, use 80+ for higher quality)",
-    )
-    args = parser.parse_args()
-
-    out = Path(args.out)
-    if out.parent == Path('.'):
-        out = Path("output") / out
-    out.parent.mkdir(parents=True, exist_ok=True)
-    shapes = _make_shapes()
-    render_gallery(shapes, out, ncols=args.cols, res=args.res)
-
-
 if __name__ == "__main__":
-    main()
+    folder = Path(__file__).parent / "output"
+    render_gallery(_make_shapes(), folder, ncols=8, res=48)

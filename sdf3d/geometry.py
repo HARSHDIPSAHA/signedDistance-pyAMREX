@@ -2,18 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Callable, Sequence, Tuple
+from collections.abc import Callable, Sequence
+from typing import TypeAlias
 
 import numpy as np
-import numpy.typing as npt
 
 from . import primitives as sdf
+from .primitives import Points3D, Distances
 
-# ---------------------------------------------------------------------------
-# Type aliases
-# ---------------------------------------------------------------------------
-_Array = npt.NDArray[np.floating]
-_SDFFunc = Callable[[_Array], _Array]
+SDFFunc: TypeAlias = Callable[[Points3D], Distances]
 
 
 # ===========================================================================
@@ -34,14 +31,14 @@ class SDF3D:
     - Rotations:          :meth:`rotate_x`, :meth:`rotate_y`, :meth:`rotate_z`
     """
 
-    def __init__(self, func: _SDFFunc) -> None:
+    def __init__(self, func: SDFFunc) -> None:
         self._func = func
 
-    def sdf(self, p: _Array) -> _Array:
+    def sdf(self, p: Points3D) -> Distances:
         """Evaluate signed distance at *p* (shape ``(..., 3)``)."""
         return self._func(p)
 
-    def __call__(self, p: _Array) -> _Array:
+    def __call__(self, p: Points3D) -> Distances:
         return self._func(p)
 
     # ------------------------------------------------------------------
@@ -312,7 +309,7 @@ class Union3D(SDF3D):
     """Union of two or more 3-D geometries (minimum SDF)."""
 
     def __init__(self, *geoms: SDF3D) -> None:
-        def _sdf(p: _Array) -> _Array:
+        def _sdf(p: Points3D) -> Distances:
             d = geoms[0].sdf(p)
             for g in geoms[1:]:
                 d = sdf.opUnion(d, g.sdf(p))
@@ -325,7 +322,7 @@ class Intersection3D(SDF3D):
     """Intersection of two or more 3-D geometries (maximum SDF)."""
 
     def __init__(self, *geoms: SDF3D) -> None:
-        def _sdf(p: _Array) -> _Array:
+        def _sdf(p: Points3D) -> Distances:
             d = geoms[0].sdf(p)
             for g in geoms[1:]:
                 d = sdf.opIntersection(d, g.sdf(p))

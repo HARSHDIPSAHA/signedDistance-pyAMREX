@@ -13,8 +13,13 @@ https://iquilezles.org/articles/distfunctions/
 """
 
 import numpy as np
+import numpy.typing as npt
+from typing import TypeAlias
 
 from _sdf_common import *  # noqa: F401, F403  — re-export shared helpers
+
+Points3D:  TypeAlias = npt.NDArray[np.floating]  # shape (..., 3)
+Distances: TypeAlias = npt.NDArray[np.floating]  # shape (...)
 
 
 # ===========================================================================

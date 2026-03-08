@@ -2,18 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Callable, Sequence
+from collections.abc import Callable, Sequence
+from typing import TypeAlias
 
 import numpy as np
-import numpy.typing as npt
 
 from . import primitives as sdf
+from .primitives import Points2D, Distances
 
-# ---------------------------------------------------------------------------
-# Type aliases
-# ---------------------------------------------------------------------------
-_Array = npt.NDArray[np.floating]
-_SDFFunc = Callable[[_Array], _Array]
+SDFFunc: TypeAlias = Callable[[Points2D], Distances]
 
 
 # ===========================================================================
@@ -36,14 +33,14 @@ class SDF2D:
     - Transforms:         :meth:`translate`, :meth:`scale`, :meth:`rotate`
     """
 
-    def __init__(self, func: _SDFFunc) -> None:
+    def __init__(self, func: SDFFunc) -> None:
         self._func = func
 
-    def sdf(self, p: _Array) -> _Array:
+    def sdf(self, p: Points2D) -> Distances:
         """Evaluate signed distance at *p* (shape ``(..., 2)``)."""
         return self._func(p)
 
-    def __call__(self, p: _Array) -> _Array:
+    def __call__(self, p: Points2D) -> Distances:
         return self._func(p)
 
     # ------------------------------------------------------------------
@@ -121,27 +118,23 @@ class SDF2D:
             Figure title.
         """
         from pathlib import Path
-        import warnings
 
         path = Path(path)
         if path.parent == Path('.'):
             path = Path("output") / path
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        try:
-            import matplotlib.pyplot as plt
-        except ImportError as exc:
-            print(f"  save_png: {exc} — skipping")
-            return
+        import matplotlib.pyplot as plt
 
         from .grid import sample_levelset_2d
 
+        import warnings
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             phi = sample_levelset_2d(self, bounds, resolution)
 
         (x0, x1), (y0, y1) = bounds
-        extent = [x0, x1, y0, y1]
+        extent = (x0, x1, y0, y1)
         lim = max(float(np.nanmax(np.abs(phi))), 1e-6)
 
         fig, ax = plt.subplots(figsize=(5, 5), facecolor="#111")
@@ -590,7 +583,7 @@ class Union2D(SDF2D):
     """Union of two or more 2-D geometries (minimum SDF)."""
 
     def __init__(self, *geoms: SDF2D) -> None:
-        def _sdf(p: _Array) -> _Array:
+        def _sdf(p: Points2D) -> Distances:
             d = geoms[0].sdf(p)
             for g in geoms[1:]:
                 d = sdf.opUnion(d, g.sdf(p))
@@ -603,7 +596,7 @@ class Intersection2D(SDF2D):
     """Intersection of two or more 2-D geometries (maximum SDF)."""
 
     def __init__(self, *geoms: SDF2D) -> None:
-        def _sdf(p: _Array) -> _Array:
+        def _sdf(p: Points2D) -> Distances:
             d = geoms[0].sdf(p)
             for g in geoms[1:]:
                 d = sdf.opIntersection(d, g.sdf(p))
