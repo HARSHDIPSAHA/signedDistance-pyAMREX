@@ -53,7 +53,7 @@ try:
     dm       = amr.DistributionMapping(ba)
 
     lib      = SDFMultiFab3D(geom, ba, dm)
-    levelset = lib.from_geometry(Sphere3D(0.3))
+    levelset = Sphere3D(0.3).to_multifab(geom, ba, dm)
     # levelset is an amr.MultiFab
 finally:
     amr.finalize()
@@ -186,14 +186,13 @@ layout and it reuses that layout for every call.
 from sdf2d import SDFMultiFab2D, Circle2D
 import amrex.space2d as amr
 
-lib = SDFMultiFab2D(geom, ba, dm)   # holds the grid layout
-
-mf = lib.from_geometry(Circle2D(0.3))   # creates + fills a MultiFab
+mf = Circle2D(0.3).to_multifab(geom, ba, dm)   # creates + fills a MultiFab
 ```
 
-`from_geometry` is a thin wrapper over the two lower-level methods:
+`to_multifab` is a thin wrapper over the two lower-level `SDFMultiFab2D` methods:
 
 ```python
+lib = SDFMultiFab2D(geom, ba, dm)   # holds the grid layout
 mf = lib.create_multifab()          # allocate empty MultiFab
 lib.fill_multifab(mf, geom_obj.sdf) # write SDF values into it
 ```
@@ -327,14 +326,13 @@ layout and it reuses that layout for every call.
 from sdf3d import SDFMultiFab3D, Sphere3D
 import amrex.space3d as amr
 
-lib = SDFMultiFab3D(geom, ba, dm)       # holds the grid layout
-
-mf = lib.from_geometry(Sphere3D(0.3))  # creates + fills a MultiFab
+mf = Sphere3D(0.3).to_multifab(geom, ba, dm)  # creates + fills a MultiFab
 ```
 
-`from_geometry` is a thin wrapper over the two lower-level methods:
+`to_multifab` is a thin wrapper over the two lower-level `SDFMultiFab3D` methods:
 
 ```python
+lib = SDFMultiFab3D(geom, ba, dm)   # holds the grid layout
 mf = lib.create_multifab()          # allocate empty MultiFab
 lib.fill_multifab(mf, geom_obj.sdf) # write SDF values into it
 ```
@@ -408,9 +406,8 @@ try:
     ba       = amr.BoxArray(domain); ba.max_size(32)
     dm       = amr.DistributionMapping(ba)
 
-    from sdf3d import SDFMultiFab3D, Sphere3D
-    lib = SDFMultiFab3D(geom, ba, dm)       # holds the grid layout
-    mf  = lib.from_geometry(Sphere3D(0.3))  # creates + fills a MultiFab
+    from sdf3d import Sphere3D
+    mf  = Sphere3D(0.3).to_multifab(geom, ba, dm)  # creates + fills a MultiFab
 
     varnames = amr.Vector_string(["phi"])
     amr.write_single_level_plotfile("output/levelset", mf, varnames, geom, 0.0, 0)

@@ -20,7 +20,7 @@ A 2D and 3D Signed Distance Function library with STL mesh conversion and option
 - `primitives.py` — NumPy implementations of all ~50 2D SDF formulas (`sdCircle`, `sdBox2D`, …) and `opTx2D`. Re-exports everything from `_sdf_common`. No AMReX dependency.
 - `geometry.py` — All 2D geometry classes: `Circle2D`, `Box2D`, `Hexagon2D`, … plus `Union2D`, `Intersection2D`, `Subtraction2D`. Transforms: `translate`, `rotate`, `scale`, `round`, `onion`. Every class wraps a lambda over `primitives` and exposes `sdf(p)`.
 - `grid.py` — `sample_levelset_2d(geom, bounds, resolution)` → `ndarray` of shape `(ny, nx)`. Also provides `save_npy`.
-- `amrex.py` — `SDFMultiFab2D`: a bound factory for AMReX `MultiFab` output. Construct once with `(geom, ba, dm)`; call `from_geometry(shape)` to create + fill a MultiFab. Requires `amrex.space2d`. Import-guarded so the module loads without AMReX.
+- `amrex.py` — `SDFMultiFab2D`: a bound factory for AMReX `MultiFab` output. Construct once with `(geom, ba, dm)`; use `shape.to_multifab(geom, ba, dm)` to create + fill a MultiFab, or call `create_multifab()` / `fill_multifab()` for lower-level control. Requires `amrex.space2d`. Import-guarded so the module loads without AMReX.
 - `__init__.py` — Re-exports all public symbols.
 
 ---
@@ -30,7 +30,7 @@ A 2D and 3D Signed Distance Function library with STL mesh conversion and option
 - `primitives.py` — NumPy implementations of all ~30 3D SDF formulas (`sdSphere`, `sdBox`, …), smooth boolean ops (`opSmoothUnion`, …), and space-warps (`opElongate`, `opRevolution`, `opExtrusion`, `opTwist`, …). Re-exports everything from `_sdf_common`. No AMReX dependency.
 - `geometry.py` — All 3D geometry classes: `Sphere3D`, `Box3D`, `RoundBox3D`, `Cylinder3D`, `ConeExact3D`, `Torus3D`, and `Union3D` / `Intersection3D` / `Subtraction3D`. Transforms: `translate`, `rotate_x/y/z`, `scale`, `elongate`, `round`, `onion`.
 - `grid.py` — `sample_levelset_3d(geom, bounds, resolution)` → `ndarray` of shape `(nz, ny, nx)`. Also provides `save_npy`.
-- `amrex.py` — `SDFMultiFab3D`: a bound factory for AMReX `MultiFab` output. Construct once with `(geom, ba, dm)`; call `from_geometry(shape)` to create + fill a MultiFab. Requires `amrex.space3d`. Import-guarded so the module loads without AMReX.
+- `amrex.py` — `SDFMultiFab3D`: a bound factory for AMReX `MultiFab` output. Construct once with `(geom, ba, dm)`; use `shape.to_multifab(geom, ba, dm)` to create + fill a MultiFab, or call `create_multifab()` / `fill_multifab()` for lower-level control. Requires `amrex.space3d`. Import-guarded so the module loads without AMReX.
 - `examples/` — High-level geometry assemblies:
   - `nato_stanag.py` — `NATOFragment(lib, …)`: NATO STANAG fragmentation cylinder with conical nose.
   - `rocket_assembly.py` — `RocketAssembly(lib, …)`: multi-part rocket with body, nose, and fins.

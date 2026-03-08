@@ -102,7 +102,7 @@ uv run python examples/stl_sdf_demo.py --res 40   # full quality
 
 ```python
 import amrex.space3d as amr
-from sdf3d import SDFMultiFab3D, Sphere3D
+from sdf3d import Sphere3D
 
 amr.initialize([])
 try:
@@ -112,8 +112,7 @@ try:
     ba       = amr.BoxArray(domain); ba.max_size(32)
     dm       = amr.DistributionMapping(ba)
 
-    lib = SDFMultiFab3D(geom, ba, dm)
-    mf  = lib.from_geometry(Sphere3D(0.3))
+    mf  = Sphere3D(0.3).to_multifab(geom, ba, dm)
     # mf is an amr.MultiFab
 finally:
     amr.finalize()

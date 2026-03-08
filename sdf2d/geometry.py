@@ -72,6 +72,16 @@ class SDF2D:
         """Return the intersection (max) of this shape and *other*."""
         return SDF2D(lambda p: sdf.opIntersection(self.sdf(p), other.sdf(p)))
 
+    # Operator shorthands: A | B → union, A - B → subtract, A / B → intersect
+    def __or__(self, other: SDF2D) -> SDF2D:
+        return self.union(other)
+
+    def __sub__(self, other: SDF2D) -> SDF2D:
+        return self.subtract(other)
+
+    def __truediv__(self, other: SDF2D) -> SDF2D:
+        return self.intersect(other)
+
     # ------------------------------------------------------------------
     # Modifiers
     # ------------------------------------------------------------------
@@ -149,7 +159,10 @@ class SDF2D:
             A single-component MultiFab filled with signed distance values.
         """
         from .amrex import SDFMultiFab2D
-        return SDFMultiFab2D(amrex_geom, ba, dm).from_geometry(self)
+        lib = SDFMultiFab2D(amrex_geom, ba, dm)
+        mf = lib.create_multifab()
+        lib.fill_multifab(mf, self.sdf)
+        return mf
 
     # ------------------------------------------------------------------
     # Visualisation helpers

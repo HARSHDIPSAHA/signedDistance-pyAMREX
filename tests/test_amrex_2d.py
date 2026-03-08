@@ -67,18 +67,17 @@ class TestSDFMultiFab2D:
         amr2d.finalize()
 
     def test_returns_multifab(self):
-        from sdf2d import SDFMultiFab2D, Circle2D
+        from sdf2d import Circle2D
         geom, ba, dm = _make_grid(n=16)
-        lib = SDFMultiFab2D(geom, ba, dm)
-        mf  = lib.from_geometry(Circle2D(0.5))
+        mf = Circle2D(0.5).to_multifab(geom, ba, dm)
         assert hasattr(mf, "array")
 
     def test_union_contains_both(self):
         from sdf2d import SDFMultiFab2D, Circle2D
         geom, ba, dm = _make_grid(n=32)
         lib = SDFMultiFab2D(geom, ba, dm)
-        a = lib.from_geometry(Circle2D(0.25).translate(-0.4, 0.0))
-        b = lib.from_geometry(Circle2D(0.25).translate( 0.4, 0.0))
+        a = Circle2D(0.25).translate(-0.4, 0.0).to_multifab(geom, ba, dm)
+        b = Circle2D(0.25).translate( 0.4, 0.0).to_multifab(geom, ba, dm)
         u = lib.union(a, b)
         phi = _collect(u, 32)
         assert phi[16,  8] < 0   # left circle centre
@@ -88,8 +87,8 @@ class TestSDFMultiFab2D:
         from sdf2d import SDFMultiFab2D, Circle2D
         geom, ba, dm = _make_grid(n=32)
         lib = SDFMultiFab2D(geom, ba, dm)
-        cutter = lib.from_geometry(Circle2D(0.2))
-        base   = lib.from_geometry(Circle2D(0.5))
+        cutter = Circle2D(0.2).to_multifab(geom, ba, dm)
+        base   = Circle2D(0.5).to_multifab(geom, ba, dm)
         result = lib.subtract(cutter, base)
         phi = _collect(result, 32)
         assert phi[16, 16] > 0   # origin is in the hole → outside
@@ -99,8 +98,8 @@ class TestSDFMultiFab2D:
         from sdf2d import SDFMultiFab2D, Circle2D
         geom, ba, dm = _make_grid(n=32)
         lib = SDFMultiFab2D(geom, ba, dm)
-        a = lib.from_geometry(Circle2D(0.3).translate(-0.1, 0.0))
-        b = lib.from_geometry(Circle2D(0.3).translate( 0.1, 0.0))
+        a = Circle2D(0.3).translate(-0.1, 0.0).to_multifab(geom, ba, dm)
+        b = Circle2D(0.3).translate( 0.1, 0.0).to_multifab(geom, ba, dm)
         inter = lib.intersect(a, b)
         phi = _collect(inter, 32)
         assert phi[16, 16] < 0   # origin is in the overlap → inside
@@ -110,25 +109,15 @@ class TestSDFMultiFab2D:
         from sdf2d import SDFMultiFab2D, Circle2D
         geom, ba, dm = _make_grid(n=32)
         lib = SDFMultiFab2D(geom, ba, dm)
-        circ     = lib.from_geometry(Circle2D(0.3))
+        circ     = Circle2D(0.3).to_multifab(geom, ba, dm)
         neg      = lib.negate(circ)
         phi_orig = _collect(circ, 32)
         phi_neg  = _collect(neg,  32)
         npt.assert_allclose(phi_neg, -phi_orig)
 
-    def test_from_geometry(self):
-        from sdf2d import SDFMultiFab2D, Circle2D
-        geom, ba, dm = _make_grid(n=32)
-        lib = SDFMultiFab2D(geom, ba, dm)
-        circle_geom = Circle2D(0.3)          # Circle2D takes radius only; centred at origin
-        mf = lib.from_geometry(circle_geom)
-        phi = _collect(mf, 32)
-        assert phi[16, 16] < 0
-
-    def test_to_multifab_member(self):
+    def test_to_multifab(self):
         from sdf2d import Circle2D
-        amrex_geom, ba, dm = _make_grid(n=32)
-        circle = Circle2D(0.3)
-        mf = circle.to_multifab(amrex_geom, ba, dm)
+        geom, ba, dm = _make_grid(n=32)
+        mf = Circle2D(0.3).to_multifab(geom, ba, dm)
         phi = _collect(mf, 32)
         assert phi[16, 16] < 0   # origin is inside → negative

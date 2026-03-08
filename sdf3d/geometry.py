@@ -13,7 +13,7 @@ from . import primitives as sdf
 from .primitives import Points3D, Distances
 
 SDFFunc: TypeAlias = Callable[[Points3D], Distances]
-_Array = npt.NDArray[np.floating]
+_Array: TypeAlias = npt.NDArray[np.floating]
 _Bounds3D = tuple[tuple[float, float], tuple[float, float], tuple[float, float]]
 _Resolution3D = tuple[int, int, int]
 
@@ -167,7 +167,10 @@ class SDF3D:
             A single-component MultiFab filled with signed distance values.
         """
         from .amrex import SDFMultiFab3D
-        return SDFMultiFab3D(amrex_geom, ba, dm).from_geometry(self)
+        lib = SDFMultiFab3D(amrex_geom, ba, dm)
+        mf = lib.create_multifab()
+        lib.fill_multifab(mf, self.sdf)
+        return mf
 
     # ------------------------------------------------------------------
     # Visualisation helpers

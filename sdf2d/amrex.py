@@ -64,14 +64,12 @@ class SDFMultiFab2D:
         mf  = lib.from_geometry(Circle2D(0.3))  # creates + fills a MultiFab
 
     Think of it like a database connection object: open it once, then call
-    methods on it as many times as you need.  ``from_geometry`` is the main
-    entry point; it is a thin wrapper over the two lower-level primitives::
+    methods on it as many times as you need.  Use :meth:`fill_multifab`
+    directly when you want to reuse an existing MultiFab or supply a raw SDF
+    callable instead of a geometry object::
 
         mf = lib.create_multifab()          # allocate empty MultiFab
         lib.fill_multifab(mf, geom.sdf)     # write SDF values into it
-
-    Call :meth:`fill_multifab` directly when you want to reuse an existing
-    MultiFab or supply a raw SDF callable instead of a geometry object.
 
     Parameters
     ----------
@@ -84,8 +82,7 @@ class SDFMultiFab2D:
 
     Implemented operations
     ----------------------
-    :meth:`from_geometry`, :meth:`union`, :meth:`subtract`, :meth:`intersect`,
-    :meth:`negate`
+    :meth:`union`, :meth:`subtract`, :meth:`intersect`, :meth:`negate`
     """
 
     def __init__(
@@ -106,25 +103,6 @@ class SDFMultiFab2D:
         """Return an uninitialised single-component MultiFab with no ghost cells."""
         import amrex.space2d as amr
         return amr.MultiFab(self.ba, self.dm, 1, 0)
-
-    # ------------------------------------------------------------------
-    # Geometry → MultiFab
-    # ------------------------------------------------------------------
-
-    def from_geometry(self, geometry: "SDF2D") -> "amr.MultiFab":
-        """Evaluate *geometry* on the AMReX grid and return a MultiFab.
-
-        This is a thin convenience wrapper — equivalent to:
-            mf = lib.create_multifab()
-            lib.fill_multifab(mf, geometry.sdf)
-
-        Call :meth:`fill_multifab` directly when you need to reuse an
-        existing MultiFab or supply a raw SDF callable instead of a geometry
-        object.
-        """
-        mf = self.create_multifab()
-        self.fill_multifab(mf, geometry.sdf)
-        return mf
 
     # ------------------------------------------------------------------
     # Boolean operations on MultiFabs

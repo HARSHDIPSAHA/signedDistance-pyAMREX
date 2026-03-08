@@ -38,13 +38,13 @@ __all__ = [
 # Vector constructors
 # ===========================================================================
 
-def vec2(x: FloatArray, y: FloatArray) -> FloatArray:
+def vec2(x: npt.ArrayLike, y: npt.ArrayLike) -> FloatArray:
     """Stack *x* and *y* into a ``(..., 2)`` array."""
     x, y = np.broadcast_arrays(x, y)
     return np.stack([x, y], axis=-1)
 
 
-def vec3(x: FloatArray, y: FloatArray, z: FloatArray) -> FloatArray:
+def vec3(x: npt.ArrayLike, y: npt.ArrayLike, z: npt.ArrayLike) -> FloatArray:
     """Stack *x*, *y*, *z* into a ``(..., 3)`` array."""
     x, y, z = np.broadcast_arrays(x, y, z)
     return np.stack([x, y, z], axis=-1)

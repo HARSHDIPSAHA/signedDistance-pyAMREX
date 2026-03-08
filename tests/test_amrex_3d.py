@@ -65,18 +65,17 @@ class TestSDFMultiFab3D:
         amr3d.finalize()
 
     def test_returns_multifab(self):
-        from sdf3d import SDFMultiFab3D, Sphere3D
+        from sdf3d import Sphere3D
         geom, ba, dm = _make_grid(n=16)
-        lib = SDFMultiFab3D(geom, ba, dm)
-        mf  = lib.from_geometry(Sphere3D(0.4))
+        mf = Sphere3D(0.4).to_multifab(geom, ba, dm)
         assert hasattr(mf, "array")
 
     def test_union_contains_both(self):
         from sdf3d import SDFMultiFab3D, Sphere3D
         geom, ba, dm = _make_grid(n=16)
         lib = SDFMultiFab3D(geom, ba, dm)
-        a = lib.from_geometry(Sphere3D(0.2).translate(-0.4, 0.0, 0.0))
-        b = lib.from_geometry(Sphere3D(0.2).translate( 0.4, 0.0, 0.0))
+        a = Sphere3D(0.2).translate(-0.4, 0.0, 0.0).to_multifab(geom, ba, dm)
+        b = Sphere3D(0.2).translate( 0.4, 0.0, 0.0).to_multifab(geom, ba, dm)
         u = lib.union(a, b)
         phi = _collect(u, 16)
         assert phi[8, 8,  4] < 0   # left sphere centre
@@ -86,8 +85,8 @@ class TestSDFMultiFab3D:
         from sdf3d import SDFMultiFab3D, Sphere3D
         geom, ba, dm = _make_grid(n=16)
         lib = SDFMultiFab3D(geom, ba, dm)
-        cutter = lib.from_geometry(Sphere3D(0.2))
-        base   = lib.from_geometry(Sphere3D(0.5))
+        cutter = Sphere3D(0.2).to_multifab(geom, ba, dm)
+        base   = Sphere3D(0.5).to_multifab(geom, ba, dm)
         result = lib.subtract(cutter, base)
         phi = _collect(result, 16)
         assert phi[8, 8, 8] > 0   # origin is in the hole → outside
@@ -96,26 +95,16 @@ class TestSDFMultiFab3D:
         from sdf3d import SDFMultiFab3D, Sphere3D
         geom, ba, dm = _make_grid(n=16)
         lib = SDFMultiFab3D(geom, ba, dm)
-        a = lib.from_geometry(Sphere3D(0.3).translate(-0.1, 0.0, 0.0))
-        b = lib.from_geometry(Sphere3D(0.3).translate( 0.1, 0.0, 0.0))
+        a = Sphere3D(0.3).translate(-0.1, 0.0, 0.0).to_multifab(geom, ba, dm)
+        b = Sphere3D(0.3).translate( 0.1, 0.0, 0.0).to_multifab(geom, ba, dm)
         inter = lib.intersect(a, b)
         phi = _collect(inter, 16)
         assert phi[8, 8, 8] < 0   # overlap region → inside
         assert phi[8, 8, 2] > 0   # far left (only inside a) → outside
 
-    def test_from_geometry(self):
-        from sdf3d import SDFMultiFab3D, Sphere3D
-        geom, ba, dm = _make_grid(n=16)
-        lib = SDFMultiFab3D(geom, ba, dm)
-        sphere_geom = Sphere3D(0.3)          # Sphere3D takes radius only; centred at origin
-        mf = lib.from_geometry(sphere_geom)
-        phi = _collect(mf, 16)
-        assert phi[8, 8, 8] < 0
-
-    def test_to_multifab_member(self):
+    def test_to_multifab(self):
         from sdf3d import Sphere3D
-        amrex_geom, ba, dm = _make_grid(n=16)
-        sphere = Sphere3D(0.3)
-        mf = sphere.to_multifab(amrex_geom, ba, dm)
+        geom, ba, dm = _make_grid(n=16)
+        mf = Sphere3D(0.3).to_multifab(geom, ba, dm)
         phi = _collect(mf, 16)
         assert phi[8, 8, 8] < 0   # origin is inside → negative
