@@ -12,7 +12,7 @@ from __future__ import annotations
 import numpy as np
 
 from .. import primitives as sdf
-from sdf3d.geometry import Sphere3D, Box3D, Union3D, SDF3D
+from sdf3d.geometry import Sphere3D, Box3D, SDF3D
 
 
 def RocketAssembly(
@@ -91,10 +91,10 @@ def RocketAssembly(
             .translate(dx, dy, z_fin_center)
         )
 
-        fins_geom = single_fin if fins_geom is None else Union3D(fins_geom, single_fin)
+        fins_geom = single_fin if fins_geom is None else fins_geom | single_fin
 
-    rocket: SDF3D = Union3D(body_geom, nose_geom)
+    rocket: SDF3D = body_geom | nose_geom
     if fins_geom is not None:
-        rocket = Union3D(rocket, fins_geom)
+        rocket = rocket | fins_geom
 
     return rocket

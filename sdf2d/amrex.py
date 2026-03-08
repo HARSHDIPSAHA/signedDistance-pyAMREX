@@ -5,7 +5,7 @@ It is intentionally kept separate so that the rest of ``sdf2d`` works
 without AMReX installed.
 """
 
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
@@ -14,13 +14,12 @@ from . import primitives as sdf
 
 if TYPE_CHECKING:
     import amrex.space2d as amr  # noqa: F401 — type-checker only
-    from .geometry import SDF2D
 
 _Array = npt.NDArray[np.floating]
 
 
 # ---------------------------------------------------------------------------
-# Internal helpers
+# Private helpers
 # ---------------------------------------------------------------------------
 
 def _get_component_view(arr: _Array) -> _Array:
@@ -30,9 +29,13 @@ def _get_component_view(arr: _Array) -> _Array:
     return arr[:, :, 0, 0]
 
 
-def _copy_mf_like(src: "amr.MultiFab", ba: "amr.BoxArray", dm: "amr.DistributionMapping") -> "amr.MultiFab":
-    """Create a new :class:`amr.MultiFab` with the same layout as *src* and copy values."""
-    import amrex.space2d as amr  # local import keeps the module importable without AMReX
+def _copy_mf_like(
+    src: "amr.MultiFab",
+    ba: "amr.BoxArray",
+    dm: "amr.DistributionMapping",
+) -> "amr.MultiFab":
+    """Allocate a new MultiFab matching *src*'s layout and copy its values."""
+    import amrex.space2d as amr
 
     ncomp: int = src.n_comp() if callable(getattr(src, "n_comp", None)) else src.n_comp
     if callable(getattr(src, "n_grow", None)):
@@ -42,47 +45,39 @@ def _copy_mf_like(src: "amr.MultiFab", ba: "amr.BoxArray", dm: "amr.Distribution
     else:
         ngrow = 0
 
-    mf = amr.MultiFab(ba, dm, ncomp, ngrow)
+    out = amr.MultiFab(ba, dm, ncomp, ngrow)
     for mfi in src:
         arr_src = src.array(mfi).to_numpy()
-        arr_dst = mf.array(mfi).to_numpy()
+        arr_dst = out.array(mfi).to_numpy()
         _get_component_view(arr_dst)[...] = _get_component_view(arr_src)
-    return mf
+    return out
 
 
 # ---------------------------------------------------------------------------
 # Public class
 # ---------------------------------------------------------------------------
 
-class SDFMultiFab2D:
-    """A bound factory that fills AMReX MultiFabs with 2-D SDF values.
+class MultiFabGrid2D:
+    """Grid context for 2-D AMReX MultiFab operations.
 
-    Construct it once with the AMReX grid layout (domain, box decomposition,
-    MPI distribution); all subsequent calls reuse that layout automatically::
+    Create once per domain layout; reuse for every shape and boolean op::
 
-        lib = SDFMultiFab2D(geom, ba, dm)   # holds the grid layout
-        mf  = lib.from_geometry(Circle2D(0.3))  # creates + fills a MultiFab
+        grid = MultiFabGrid2D(geom, ba, dm)
 
-    Think of it like a database connection object: open it once, then call
-    methods on it as many times as you need.  Use :meth:`fill_multifab`
-    directly when you want to reuse an existing MultiFab or supply a raw SDF
-    callable instead of a geometry object::
+        mf_circle = Circle2D(0.3).fill(grid)
+        mf_box    = Box2D((0.2, 0.2)).fill(grid)
+        mf_union  = grid.union(mf_circle, mf_box)
 
-        mf = lib.create_multifab()          # allocate empty MultiFab
-        lib.fill_multifab(mf, geom.sdf)     # write SDF values into it
+        amr.write_single_level_plotfile(pf_dir, mf_union, ...)
 
     Parameters
     ----------
     geom:
-        An ``amr.Geometry`` object that defines the physical domain.
+        ``amr.Geometry`` defining the physical domain.
     ba:
-        ``amr.BoxArray`` describing the domain decomposition.
+        ``amr.BoxArray`` describing the grid decomposition.
     dm:
         ``amr.DistributionMapping`` assigning boxes to MPI ranks.
-
-    Implemented operations
-    ----------------------
-    :meth:`union`, :meth:`subtract`, :meth:`intersect`, :meth:`negate`
     """
 
     def __init__(
@@ -92,11 +87,11 @@ class SDFMultiFab2D:
         dm: "amr.DistributionMapping",
     ) -> None:
         self.geom = geom
-        self.ba = ba
-        self.dm = dm
+        self.ba   = ba
+        self.dm   = dm
 
     # ------------------------------------------------------------------
-    # MultiFab factory
+    # MultiFab allocation and fill
     # ------------------------------------------------------------------
 
     def create_multifab(self) -> "amr.MultiFab":
@@ -104,60 +99,8 @@ class SDFMultiFab2D:
         import amrex.space2d as amr
         return amr.MultiFab(self.ba, self.dm, 1, 0)
 
-    # ------------------------------------------------------------------
-    # Boolean operations on MultiFabs
-    # ------------------------------------------------------------------
-
-    def union(self, a: "amr.MultiFab", b: "amr.MultiFab") -> "amr.MultiFab":
-        """Return ``min(a, b)`` element-wise."""
-        out = _copy_mf_like(a, self.ba, self.dm)
-        for mfi in out:
-            arr_out = out.array(mfi).to_numpy()
-            arr_b = b.array(mfi).to_numpy()
-            _get_component_view(arr_out)[...] = sdf.opUnion(
-                _get_component_view(arr_out), _get_component_view(arr_b)
-            )
-        return out
-
-    def subtract(self, a: "amr.MultiFab", b: "amr.MultiFab") -> "amr.MultiFab":
-        """Return ``max(-a, b)`` element-wise (subtract *b* from *a*)."""
-        out = _copy_mf_like(a, self.ba, self.dm)
-        for mfi in out:
-            arr_out = out.array(mfi).to_numpy()
-            arr_b = b.array(mfi).to_numpy()
-            _get_component_view(arr_out)[...] = sdf.opSubtraction(
-                _get_component_view(arr_out), _get_component_view(arr_b)
-            )
-        return out
-
-    def intersect(self, a: "amr.MultiFab", b: "amr.MultiFab") -> "amr.MultiFab":
-        """Return ``max(a, b)`` element-wise."""
-        out = _copy_mf_like(a, self.ba, self.dm)
-        for mfi in out:
-            arr_out = out.array(mfi).to_numpy()
-            arr_b = b.array(mfi).to_numpy()
-            _get_component_view(arr_out)[...] = sdf.opIntersection(
-                _get_component_view(arr_out), _get_component_view(arr_b)
-            )
-        return out
-
-    def negate(self, a: "amr.MultiFab") -> "amr.MultiFab":
-        """Negate *a* element-wise (flip inside/outside)."""
-        out = _copy_mf_like(a, self.ba, self.dm)
-        for mfi in out:
-            arr_out = out.array(mfi).to_numpy()
-            _get_component_view(arr_out)[...] *= -1.0
-        return out
-
-    # ------------------------------------------------------------------
-    # Grid fill
-    # ------------------------------------------------------------------
-
-    def fill_multifab(
-        self,
-        mf: "amr.MultiFab",
-        sdf_func: "_SDFFunc",  # type: ignore[name-defined]
-    ) -> None:
+    def fill_multifab(self, mf: "amr.MultiFab", sdf_func) -> None:
+        """Write SDF values from *sdf_func* into the pre-allocated MultiFab *mf*."""
         dx = self.geom.data().CellSize()
         if hasattr(self.geom, "ProbLoArray"):
             prob_lo = self.geom.ProbLoArray()
@@ -168,7 +111,7 @@ class SDFMultiFab2D:
 
         for mfi in mf:
             arr = mf.array(mfi).to_numpy()
-            bx = mfi.validbox()
+            bx  = mfi.validbox()
             i_lo, j_lo = bx.lo_vect
             i_hi, j_hi = bx.hi_vect
 
@@ -182,3 +125,42 @@ class SDFMultiFab2D:
             p = sdf.vec2(X, Y)
 
             _get_component_view(arr)[...] = sdf_func(p)
+
+    # ------------------------------------------------------------------
+    # Boolean operations on raw MultiFabs
+    # ------------------------------------------------------------------
+
+    def union(self, a: "amr.MultiFab", b: "amr.MultiFab") -> "amr.MultiFab":
+        """Return ``min(a, b)`` element-wise (SDF union)."""
+        out = _copy_mf_like(a, self.ba, self.dm)
+        for mfi in out:
+            v_out = _get_component_view(out.array(mfi).to_numpy())
+            v_b   = _get_component_view(b.array(mfi).to_numpy())
+            v_out[...] = sdf.opUnion(v_out, v_b)
+        return out
+
+    def subtract(self, base: "amr.MultiFab", cutter: "amr.MultiFab") -> "amr.MultiFab":
+        """Return *base* with *cutter* carved out: ``max(-cutter, base)``."""
+        out = _copy_mf_like(base, self.ba, self.dm)
+        for mfi in out:
+            v_base   = _get_component_view(out.array(mfi).to_numpy())
+            v_cutter = _get_component_view(cutter.array(mfi).to_numpy())
+            # opSubtraction(d1=cutter, d2=base) = max(-cutter, base)
+            v_base[...] = sdf.opSubtraction(v_cutter, v_base)
+        return out
+
+    def intersect(self, a: "amr.MultiFab", b: "amr.MultiFab") -> "amr.MultiFab":
+        """Return ``max(a, b)`` element-wise (SDF intersection)."""
+        out = _copy_mf_like(a, self.ba, self.dm)
+        for mfi in out:
+            v_out = _get_component_view(out.array(mfi).to_numpy())
+            v_b   = _get_component_view(b.array(mfi).to_numpy())
+            v_out[...] = sdf.opIntersection(v_out, v_b)
+        return out
+
+    def negate(self, a: "amr.MultiFab") -> "amr.MultiFab":
+        """Negate *a* element-wise (flip inside/outside)."""
+        out = _copy_mf_like(a, self.ba, self.dm)
+        for mfi in out:
+            _get_component_view(out.array(mfi).to_numpy())[...] *= -1.0
+        return out

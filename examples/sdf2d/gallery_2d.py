@@ -36,7 +36,6 @@ def _make_shapes() -> list[tuple[str, SDF2D]]:
         Vesica2D, Moon2D, RoundedCross2D, Egg2D, Heart2D, Cross2D, RoundedX2D,
         Polygon2D, Ellipse2D, Parabola2D, ParabolaSegment2D, Bezier2D,
         BlobbyCross2D, Tunnel2D, Stairs2D, QuadraticCircle2D, Hyperbola2D,
-        Union2D, Subtraction2D,
     )
 
     sc = [0.5 * np.sqrt(2), 0.5 * np.sqrt(2)]
@@ -82,9 +81,9 @@ def _make_shapes() -> list[tuple[str, SDF2D]]:
         ("Stairs2D",             Stairs2D((0.22, 0.22), 3).translate(-0.33, -0.33)),
         ("QuadraticCircle2D",    QuadraticCircle2D()),
         ("Hyperbola2D",          Hyperbola2D(0.6, 0.4)),
-        # Boolean example
-        ("Union2D",              Union2D(Circle2D(0.45), Box2D((0.35, 0.35)).translate(0.3, 0.3))),
-        ("Subtraction2D",        Subtraction2D(Circle2D(0.65), Circle2D(0.35).translate(0.25, 0.0))),
+        # Boolean examples
+        ("union",       Circle2D(0.45) | Box2D((0.35, 0.35)).translate(0.3, 0.3)),
+        ("subtraction", Circle2D(0.65) - Circle2D(0.35).translate(0.25, 0.0)),
     ]
     return shapes
 

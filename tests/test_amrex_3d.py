@@ -1,4 +1,4 @@
-"""AMReX 3-D integration tests for SDFMultiFab3D.
+"""AMReX 3-D integration tests for MultiFabGrid3D.
 
 Requires pyAMReX (``amrex.space3d``) installed in the active Python environment.
 Without it the entire module is skipped automatically.
@@ -6,18 +6,12 @@ Without it the entire module is skipped automatically.
 IMPORTANT — run in isolation to avoid the space2d/space3d pybind11 conflict::
 
     python -m pytest tests/test_amrex_3d.py -v
-
-When the full suite is run (``pytest tests/``), this file is skipped because
-``amrex.space2d`` is imported first (from test_amrex_2d.py) and the two
-AMReX pybind11 modules cannot coexist in the same process.
 """
 import sys
 
 import numpy as np
 import pytest
 
-# amrex.space2d and amrex.space3d share a pybind11 type ("AMReX") and cannot
-# coexist in the same process.  Skip cleanly if the 2D namespace is already loaded.
 if "amrex.space2d" in sys.modules:
     pytest.skip(
         "amrex.space2d already imported in this process; "
@@ -57,54 +51,63 @@ def _collect(mf, n: int) -> np.ndarray:
 # Tests
 # ---------------------------------------------------------------------------
 
-class TestSDFMultiFab3D:
+class TestMultiFabGrid3D:
     @pytest.fixture(autouse=True)
     def init_amrex(self):
         amr3d.initialize([])
         yield
         amr3d.finalize()
 
-    def test_returns_multifab(self):
-        from sdf3d import Sphere3D
+    def test_fill_returns_multifab(self):
+        from sdf3d import Sphere3D, MultiFabGrid3D
         geom, ba, dm = _make_grid(n=16)
-        mf = Sphere3D(0.4).to_multifab(geom, ba, dm)
+        grid = MultiFabGrid3D(geom, ba, dm)
+        mf = Sphere3D(0.4).fill(grid)
         assert hasattr(mf, "array")
 
-    def test_union_contains_both(self):
-        from sdf3d import SDFMultiFab3D, Sphere3D
-        geom, ba, dm = _make_grid(n=16)
-        lib = SDFMultiFab3D(geom, ba, dm)
-        a = Sphere3D(0.2).translate(-0.4, 0.0, 0.0).to_multifab(geom, ba, dm)
-        b = Sphere3D(0.2).translate( 0.4, 0.0, 0.0).to_multifab(geom, ba, dm)
-        u = lib.union(a, b)
-        phi = _collect(u, 16)
-        assert phi[8, 8,  4] < 0   # left sphere centre
-        assert phi[8, 8, 12] < 0   # right sphere centre
-
-    def test_subtract_removes_cutter(self):
-        from sdf3d import SDFMultiFab3D, Sphere3D
-        geom, ba, dm = _make_grid(n=16)
-        lib = SDFMultiFab3D(geom, ba, dm)
-        cutter = Sphere3D(0.2).to_multifab(geom, ba, dm)
-        base   = Sphere3D(0.5).to_multifab(geom, ba, dm)
-        result = lib.subtract(cutter, base)
-        phi = _collect(result, 16)
-        assert phi[8, 8, 8] > 0   # origin is in the hole → outside
-
-    def test_intersect_requires_both(self):
-        from sdf3d import SDFMultiFab3D, Sphere3D
-        geom, ba, dm = _make_grid(n=16)
-        lib = SDFMultiFab3D(geom, ba, dm)
-        a = Sphere3D(0.3).translate(-0.1, 0.0, 0.0).to_multifab(geom, ba, dm)
-        b = Sphere3D(0.3).translate( 0.1, 0.0, 0.0).to_multifab(geom, ba, dm)
-        inter = lib.intersect(a, b)
-        phi = _collect(inter, 16)
-        assert phi[8, 8, 8] < 0   # overlap region → inside
-        assert phi[8, 8, 2] > 0   # far left (only inside a) → outside
-
-    def test_to_multifab(self):
+    def test_to_multifab_convenience(self):
         from sdf3d import Sphere3D
         geom, ba, dm = _make_grid(n=16)
         mf = Sphere3D(0.3).to_multifab(geom, ba, dm)
         phi = _collect(mf, 16)
         assert phi[8, 8, 8] < 0   # origin is inside → negative
+
+    def test_union_contains_both(self):
+        from sdf3d import Sphere3D, MultiFabGrid3D
+        geom, ba, dm = _make_grid(n=16)
+        grid = MultiFabGrid3D(geom, ba, dm)
+        mf_a = Sphere3D(0.2).translate(-0.4, 0.0, 0.0).fill(grid)
+        mf_b = Sphere3D(0.2).translate( 0.4, 0.0, 0.0).fill(grid)
+        phi = _collect(grid.union(mf_a, mf_b), 16)
+        assert phi[8, 8,  4] < 0   # left sphere centre
+        assert phi[8, 8, 12] < 0   # right sphere centre
+
+    def test_subtract_removes_cutter(self):
+        from sdf3d import Sphere3D, MultiFabGrid3D
+        geom, ba, dm = _make_grid(n=16)
+        grid   = MultiFabGrid3D(geom, ba, dm)
+        base   = Sphere3D(0.5).fill(grid)
+        cutter = Sphere3D(0.2).fill(grid)
+        phi = _collect(grid.subtract(base, cutter), 16)
+        assert phi[8, 8, 8] > 0   # origin is in the hole → outside
+
+    def test_intersect_requires_both(self):
+        from sdf3d import Sphere3D, MultiFabGrid3D
+        geom, ba, dm = _make_grid(n=16)
+        grid = MultiFabGrid3D(geom, ba, dm)
+        mf_a = Sphere3D(0.3).translate(-0.1, 0.0, 0.0).fill(grid)
+        mf_b = Sphere3D(0.3).translate( 0.1, 0.0, 0.0).fill(grid)
+        phi = _collect(grid.intersect(mf_a, mf_b), 16)
+        assert phi[8, 8, 8] < 0   # overlap region → inside
+        assert phi[8, 8, 2] > 0   # far left (only inside a) → outside
+
+    def test_sdf_operators_compose_before_fill(self):
+        """SDF | - / operators compose in SDF space; fill once."""
+        from sdf3d import Sphere3D, MultiFabGrid3D
+        geom, ba, dm = _make_grid(n=16)
+        grid = MultiFabGrid3D(geom, ba, dm)
+
+        shape = Sphere3D(0.2).translate(-0.4, 0.0, 0.0) | Sphere3D(0.2).translate(0.4, 0.0, 0.0)
+        phi = _collect(shape.fill(grid), 16)
+        assert phi[8, 8,  4] < 0   # left sphere centre
+        assert phi[8, 8, 12] < 0   # right sphere centre

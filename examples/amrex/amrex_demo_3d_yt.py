@@ -1,8 +1,6 @@
 """3D AMReX SDF demo.
 
-Demonstrates the full AMReX-native visualization pipeline for 3D shapes:
-
-    amr.Geometry → SDFMultiFab3D → MultiFab → write_single_level_plotfile
+    MultiFabGrid3D → shape.fill(grid) → write_single_level_plotfile
     → yt (SurfaceSource or marching-cubes fallback) → PNG
 
 Run with:
@@ -18,13 +16,11 @@ import os
 import sys
 import amrex.space3d as amr
 
-# render_surface lives in the same directory as this script
 sys.path.insert(0, os.path.dirname(__file__))
 from render_surface_from_plotfile import render_surface
 
-# pySdf root so we can import SDFMultiFab3D
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-from sdf3d.amrex import SDFMultiFab3D
+from sdf3d import Sphere3D, Box3D, RoundBox3D, MultiFabGrid3D
 
 # ---------------------------------------------------------------------------
 # AMReX initialisation
@@ -32,32 +28,24 @@ from sdf3d.amrex import SDFMultiFab3D
 amr.initialize([])
 
 # Grid: 48^3 cells covering [-0.6, 0.6]^3
-# 48 keeps render time modest; bump to 64+ for higher fidelity
 n = 48
 lo, hi = -0.6, 0.6
 real_box = amr.RealBox([lo, lo, lo], [hi, hi, hi])
 domain   = amr.Box([0, 0, 0], [n - 1, n - 1, n - 1])
+geom     = amr.Geometry(domain, real_box, 0, [0, 0, 0])
+ba       = amr.BoxArray(domain); ba.max_size(n // 2)
+dm       = amr.DistributionMapping(ba)
 
-# coord_sys=0 → Cartesian; is_periodic=[0,0,0] → non-periodic
-geom = amr.Geometry(domain, real_box, 0, [0, 0, 0])
-
-ba = amr.BoxArray(domain)
-ba.max_size(n // 2)
-dm = amr.DistributionMapping(ba)
-
-lib = SDFMultiFab3D(geom, ba, dm)
+grid = MultiFabGrid3D(geom, ba, dm)
 
 # ---------------------------------------------------------------------------
-# Build MultiFabs for each shape
+# Build MultiFabs — fill each shape on the shared grid
 # ---------------------------------------------------------------------------
-from sdf3d import Sphere3D, Box3D, RoundBox3D
-sphere       = Sphere3D(0.3)
-box          = Box3D((0.25, 0.2, 0.15))
-mf_sphere    = sphere.to_multifab(geom, ba, dm)
-mf_box       = box.to_multifab(geom, ba, dm)
-mf_round_box = RoundBox3D((0.25, 0.2, 0.15), 0.05).to_multifab(geom, ba, dm)
-mf_union     = lib.union(mf_sphere, mf_box)
-mf_subtract  = lib.subtract(mf_box, mf_sphere)  # box with sphere subtracted
+mf_sphere    = Sphere3D(0.3).fill(grid)
+mf_box       = Box3D((0.25, 0.2, 0.15)).fill(grid)
+mf_round_box = RoundBox3D((0.25, 0.2, 0.15), 0.05).fill(grid)
+mf_union     = grid.union(mf_sphere, mf_box)
+mf_subtract  = grid.subtract(mf_box, mf_sphere)   # box with sphere carved out
 
 shapes = [
     ("sphere",    mf_sphere),
@@ -77,12 +65,7 @@ for name, mf in shapes:
     pf_dir  = os.path.join(out_dir, f"plt_{name}")
     png_out = os.path.join(out_dir, f"{name}.png")
 
-    # --- Step 1: write AMReX plotfile directory ---
     amr.write_single_level_plotfile(pf_dir, mf, amr.Vector_string(["sdf"]), geom, 0.0, 0)
-
-    # --- Step 2: render the SDF=0 isosurface ---
-    # render_surface tries yt SurfaceSource first; falls back to marching cubes
-    # (scikit-image) if SurfaceSource is unavailable in this yt build.
     render_surface(pf_dir, png_out)
     print(f"Saved {name}.png")
 

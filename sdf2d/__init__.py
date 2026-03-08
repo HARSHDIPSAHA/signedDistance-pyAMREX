@@ -8,34 +8,33 @@ based on Inigo Quilez's distance function collection.
 Implemented features
 --------------------
 - Primitive shapes: Circle, Box, triangles, polygons, stars, arcs, ...
-- Boolean operations: Union, Intersection, Subtraction
+- Boolean operations: ``|`` (union), ``-`` (subtraction), ``/`` (intersection)
 - Transforms: translate, rotate, scale, round, onion
 - Grid sampling: :meth:`SDF2D.to_array`
-- AMReX MultiFab output: :class:`SDFMultiFab2D` (requires pyAMReX 2-D build)
+- AMReX MultiFab output: :class:`MultiFabGrid2D` (requires pyAMReX 2-D build)
 
 Quick start
 -----------
 
 NumPy mode (no AMReX required)::
 
-    from sdf2d import Circle2D, Box2D, Union2D
-    import numpy as np
+    from sdf2d import Circle2D, Box2D
 
     circle = Circle2D(radius=0.3)
     box    = Box2D(half_size=(0.2, 0.2)).translate(0.4, 0.0)
-    shape  = Union2D(circle, box)
+    shape  = circle | box              # union operator
 
-    bounds     = ((-1.0, 1.0), (-1.0, 1.0))
-    resolution = (512, 512)
-    phi = shape.to_array(bounds, resolution)
+    phi = shape.to_array(bounds=((-1.0, 1.0), (-1.0, 1.0)), resolution=(512, 512))
 
 AMReX mode::
 
     import amrex.space2d as amr
+    from sdf2d import MultiFabGrid2D
 
     amr.initialize([])
     # ... set up geom, ba, dm ...
-    levelset = Circle2D(0.3).to_multifab(geom, ba, dm)
+    grid     = MultiFabGrid2D(geom, ba, dm)
+    mf       = Circle2D(0.3).fill(grid)
     amr.finalize()
 """
 
@@ -99,14 +98,10 @@ from .geometry import (
     QuadraticCircle2D,
     Hyperbola2D,
 
-    # Boolean operations
-    Union2D,
-    Intersection2D,
-    Subtraction2D,
 )
 
 from .geometry import save_npy
-from .amrex import SDFMultiFab2D
+from .amrex import MultiFabGrid2D
 
 __version__ = "0.2.0"
 
@@ -170,14 +165,9 @@ __all__ = [
     "QuadraticCircle2D",
     "Hyperbola2D",
 
-    # Boolean operations
-    "Union2D",
-    "Intersection2D",
-    "Subtraction2D",
-
     # Grid utilities
     "save_npy",
 
     # AMReX integration
-    "SDFMultiFab2D",
+    "MultiFabGrid2D",
 ]

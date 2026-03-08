@@ -141,28 +141,38 @@ class SDF2D:
         p = np.stack([X, Y], axis=-1)
         return self.sdf(p)
 
-    def to_multifab(self, amrex_geom, ba, dm):
-        """Fill an AMReX ``MultiFab`` with this geometry's SDF values.
+    def fill(self, grid) -> "amr.MultiFab":
+        """Fill *grid* with this SDF and return a raw ``amrex.space2d.MultiFab``.
 
         Parameters
         ----------
-        amrex_geom:
-            An ``amrex.space2d.Geometry`` object describing the domain.
-        ba:
-            An ``amrex.space2d.BoxArray`` describing the grid decomposition.
-        dm:
-            An ``amrex.space2d.DistributionMapping`` for MPI rank assignment.
+        grid:
+            A :class:`~sdf2d.amrex.MultiFabGrid2D` instance that defines the
+            domain layout (geom, ba, dm).
 
         Returns
         -------
         amrex.space2d.MultiFab
             A single-component MultiFab filled with signed distance values.
         """
-        from .amrex import SDFMultiFab2D
-        lib = SDFMultiFab2D(amrex_geom, ba, dm)
-        mf = lib.create_multifab()
-        lib.fill_multifab(mf, self.sdf)
+        mf = grid.create_multifab()
+        grid.fill_multifab(mf, self.sdf)
         return mf
+
+    def to_multifab(self, amrex_geom, ba, dm) -> "amr.MultiFab":
+        """Convenience: create a :class:`~sdf2d.amrex.MultiFabGrid2D` and fill.
+
+        Equivalent to::
+
+            grid = MultiFabGrid2D(amrex_geom, ba, dm)
+            mf   = shape.fill(grid)
+
+        Returns
+        -------
+        amrex.space2d.MultiFab
+        """
+        from .amrex import MultiFabGrid2D
+        return self.fill(MultiFabGrid2D(amrex_geom, ba, dm))
 
     # ------------------------------------------------------------------
     # Visualisation helpers
@@ -647,40 +657,3 @@ class Hyperbola2D(SDF2D):
         super().__init__(lambda p: sdf.sdHyperbola2D(p, curvature, height))
 
 
-# ===========================================================================
-# Boolean operation classes
-# ===========================================================================
-
-class Union2D(SDF2D):
-    """Union of two or more 2-D geometries (minimum SDF)."""
-
-    def __init__(self, *geoms: SDF2D) -> None:
-        def _sdf(p: Points2D) -> Distances:
-            d = geoms[0].sdf(p)
-            for g in geoms[1:]:
-                d = sdf.opUnion(d, g.sdf(p))
-            return d
-
-        super().__init__(_sdf)
-
-
-class Intersection2D(SDF2D):
-    """Intersection of two or more 2-D geometries (maximum SDF)."""
-
-    def __init__(self, *geoms: SDF2D) -> None:
-        def _sdf(p: Points2D) -> Distances:
-            d = geoms[0].sdf(p)
-            for g in geoms[1:]:
-                d = sdf.opIntersection(d, g.sdf(p))
-            return d
-
-        super().__init__(_sdf)
-
-
-class Subtraction2D(SDF2D):
-    """Subtract *cutter* from *base*."""
-
-    def __init__(self, base: SDF2D, cutter: SDF2D) -> None:
-        super().__init__(
-            lambda p: sdf.opSubtraction(cutter.sdf(p), base.sdf(p))
-        )

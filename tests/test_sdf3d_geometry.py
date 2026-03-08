@@ -7,7 +7,6 @@ import pytest
 from sdf3d import (
     SDF3D,
     Sphere3D, Box3D, RoundBox3D, Cylinder3D, ConeExact3D, Torus3D,
-    Union3D, Intersection3D, Subtraction3D,
 )
 
 
@@ -153,44 +152,44 @@ class TestBoolean3D:
     def test_union_includes_both(self):
         a = Sphere3D(0.3)
         b = Box3D((0.2, 0.2, 0.2)).translate(0.5, 0, 0)
-        u = Union3D(a, b)
+        u = a | b
         assert u.sdf(_p(0, 0, 0))[0] < 0      # inside sphere
         assert u.sdf(_p(0.5, 0, 0))[0] < 0    # inside box
 
     def test_intersection_requires_both(self):
         a = Sphere3D(0.3)
         b = Sphere3D(0.3).translate(0.4, 0, 0)
-        i = Intersection3D(a, b)
+        i = a / b
         assert i.sdf(_p(0, 0, 0))[0] > 0      # in a but not b
 
     def test_subtraction_removes_cutter(self):
         a = Sphere3D(0.4)
         b = Sphere3D(0.2)
-        s = Subtraction3D(a, b)
+        s = a - b
         assert s.sdf(_p(0, 0, 0))[0] > 0      # origin inside both → removed
         assert s.sdf(_p(0.3, 0, 0))[0] < 0    # in a, outside b
 
-    def test_method_union_matches_class(self):
+    def test_operator_matches_method_union(self):
         a = Sphere3D(0.3)
         b = Box3D((0.2, 0.2, 0.2))
         p = _grid(4)
-        npt.assert_allclose(a.union(b).sdf(p), Union3D(a, b).sdf(p))
+        npt.assert_allclose((a | b).sdf(p), a.union(b).sdf(p))
 
-    def test_method_subtract_matches_class(self):
+    def test_operator_matches_method_subtract(self):
         a = Sphere3D(0.4)
         b = Sphere3D(0.2)
         p = _grid(4)
-        npt.assert_allclose(a.subtract(b).sdf(p), Subtraction3D(a, b).sdf(p))
+        npt.assert_allclose((a - b).sdf(p), a.subtract(b).sdf(p))
 
-    def test_method_intersect_matches_class(self):
+    def test_operator_matches_method_intersect(self):
         a = Sphere3D(0.3)
         b = Box3D((0.2, 0.2, 0.2))
         p = _grid(4)
-        npt.assert_allclose(a.intersect(b).sdf(p), Intersection3D(a, b).sdf(p))
+        npt.assert_allclose((a / b).sdf(p), a.intersect(b).sdf(p))
 
-    def test_union_multiple_args(self):
+    def test_union_chained(self):
         shapes = [Sphere3D(0.2).translate(i * 0.5, 0, 0) for i in range(3)]
-        u = Union3D(*shapes)
-        # Centre of each sphere should be inside
+        import functools, operator
+        u = functools.reduce(operator.or_, shapes)
         for i in range(3):
             assert u.sdf(_p(i * 0.5, 0, 0))[0] < 0

@@ -1,4 +1,4 @@
-"""AMReX 2-D integration tests for SDFMultiFab2D.
+"""AMReX 2-D integration tests for MultiFabGrid2D.
 
 Requires pyAMReX (``amrex.space2d``) installed in the active Python environment.
 Without it the entire module is skipped automatically.
@@ -6,12 +6,6 @@ Without it the entire module is skipped automatically.
 Run in isolation (avoids the space2d/space3d pybind11 conflict)::
 
     python -m pytest tests/test_amrex_2d.py -v
-
-Or just run the full suite — 2-D tests run automatically, 3-D tests are skipped
-when space2d was already imported first::
-
-    uv run pytest tests/ -v          # uses uv's Python; skips if no pyAMReX
-    python -m pytest tests/ -v       # uses system Python with pyAMReX installed
 """
 import sys
 
@@ -19,8 +13,6 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 
-# amrex.space2d and amrex.space3d share a pybind11 type ("AMReX") and cannot
-# coexist in the same process.  Skip cleanly if the 3D namespace is already loaded.
 if "amrex.space3d" in sys.modules:
     pytest.skip(
         "amrex.space3d already imported in this process; "
@@ -59,65 +51,74 @@ def _collect(mf, n: int) -> np.ndarray:
 # Tests
 # ---------------------------------------------------------------------------
 
-class TestSDFMultiFab2D:
+class TestMultiFabGrid2D:
     @pytest.fixture(autouse=True)
     def init_amrex(self):
         amr2d.initialize([])
         yield
         amr2d.finalize()
 
-    def test_returns_multifab(self):
-        from sdf2d import Circle2D
+    def test_fill_returns_multifab(self):
+        from sdf2d import Circle2D, MultiFabGrid2D
         geom, ba, dm = _make_grid(n=16)
-        mf = Circle2D(0.5).to_multifab(geom, ba, dm)
+        grid = MultiFabGrid2D(geom, ba, dm)
+        mf = Circle2D(0.5).fill(grid)
         assert hasattr(mf, "array")
 
-    def test_union_contains_both(self):
-        from sdf2d import SDFMultiFab2D, Circle2D
-        geom, ba, dm = _make_grid(n=32)
-        lib = SDFMultiFab2D(geom, ba, dm)
-        a = Circle2D(0.25).translate(-0.4, 0.0).to_multifab(geom, ba, dm)
-        b = Circle2D(0.25).translate( 0.4, 0.0).to_multifab(geom, ba, dm)
-        u = lib.union(a, b)
-        phi = _collect(u, 32)
-        assert phi[16,  8] < 0   # left circle centre
-        assert phi[16, 24] < 0   # right circle centre
-
-    def test_subtract_removes_cutter(self):
-        from sdf2d import SDFMultiFab2D, Circle2D
-        geom, ba, dm = _make_grid(n=32)
-        lib = SDFMultiFab2D(geom, ba, dm)
-        cutter = Circle2D(0.2).to_multifab(geom, ba, dm)
-        base   = Circle2D(0.5).to_multifab(geom, ba, dm)
-        result = lib.subtract(cutter, base)
-        phi = _collect(result, 32)
-        assert phi[16, 16] > 0   # origin is in the hole → outside
-        assert phi[16, 21] < 0   # ~(0.25, 0): inside base, outside cutter
-
-    def test_intersect_requires_both(self):
-        from sdf2d import SDFMultiFab2D, Circle2D
-        geom, ba, dm = _make_grid(n=32)
-        lib = SDFMultiFab2D(geom, ba, dm)
-        a = Circle2D(0.3).translate(-0.1, 0.0).to_multifab(geom, ba, dm)
-        b = Circle2D(0.3).translate( 0.1, 0.0).to_multifab(geom, ba, dm)
-        inter = lib.intersect(a, b)
-        phi = _collect(inter, 32)
-        assert phi[16, 16] < 0   # origin is in the overlap → inside
-        assert phi[16,  4] > 0   # far left (only inside a) → outside intersection
-
-    def test_negate_flips_sign(self):
-        from sdf2d import SDFMultiFab2D, Circle2D
-        geom, ba, dm = _make_grid(n=32)
-        lib = SDFMultiFab2D(geom, ba, dm)
-        circ     = Circle2D(0.3).to_multifab(geom, ba, dm)
-        neg      = lib.negate(circ)
-        phi_orig = _collect(circ, 32)
-        phi_neg  = _collect(neg,  32)
-        npt.assert_allclose(phi_neg, -phi_orig)
-
-    def test_to_multifab(self):
+    def test_to_multifab_convenience(self):
         from sdf2d import Circle2D
         geom, ba, dm = _make_grid(n=32)
         mf = Circle2D(0.3).to_multifab(geom, ba, dm)
         phi = _collect(mf, 32)
         assert phi[16, 16] < 0   # origin is inside → negative
+
+    def test_union_contains_both(self):
+        from sdf2d import Circle2D, MultiFabGrid2D
+        geom, ba, dm = _make_grid(n=32)
+        grid = MultiFabGrid2D(geom, ba, dm)
+        mf_a = Circle2D(0.25).translate(-0.4, 0.0).fill(grid)
+        mf_b = Circle2D(0.25).translate( 0.4, 0.0).fill(grid)
+        phi = _collect(grid.union(mf_a, mf_b), 32)
+        assert phi[16,  8] < 0   # left circle centre
+        assert phi[16, 24] < 0   # right circle centre
+
+    def test_subtract_removes_cutter(self):
+        from sdf2d import Circle2D, MultiFabGrid2D
+        geom, ba, dm = _make_grid(n=32)
+        grid   = MultiFabGrid2D(geom, ba, dm)
+        base   = Circle2D(0.5).fill(grid)
+        cutter = Circle2D(0.2).fill(grid)
+        phi = _collect(grid.subtract(base, cutter), 32)
+        assert phi[16, 16] > 0   # origin is in the hole → outside
+        assert phi[16, 21] < 0   # ~(0.25, 0): inside base, outside cutter
+
+    def test_intersect_requires_both(self):
+        from sdf2d import Circle2D, MultiFabGrid2D
+        geom, ba, dm = _make_grid(n=32)
+        grid = MultiFabGrid2D(geom, ba, dm)
+        mf_a = Circle2D(0.3).translate(-0.1, 0.0).fill(grid)
+        mf_b = Circle2D(0.3).translate( 0.1, 0.0).fill(grid)
+        phi = _collect(grid.intersect(mf_a, mf_b), 32)
+        assert phi[16, 16] < 0   # origin is in the overlap → inside
+        assert phi[16,  4] > 0   # far left (only inside a) → outside
+
+    def test_negate_flips_sign(self):
+        from sdf2d import Circle2D, MultiFabGrid2D
+        geom, ba, dm = _make_grid(n=32)
+        grid = MultiFabGrid2D(geom, ba, dm)
+        mf   = Circle2D(0.3).fill(grid)
+        phi_orig = _collect(mf, 32)
+        phi_neg  = _collect(grid.negate(mf), 32)
+        npt.assert_allclose(phi_neg, -phi_orig)
+
+    def test_sdf_operators_compose_before_fill(self):
+        """SDF | - / operators compose in SDF space; fill once."""
+        from sdf2d import Circle2D, Box2D, MultiFabGrid2D
+        geom, ba, dm = _make_grid(n=32)
+        grid = MultiFabGrid2D(geom, ba, dm)
+
+        # Build composite SDF using operators, then fill once
+        shape = Circle2D(0.25).translate(-0.3, 0.0) | Circle2D(0.25).translate(0.3, 0.0)
+        phi = _collect(shape.fill(grid), 32)
+        assert phi[16,  8] < 0   # left circle centre
+        assert phi[16, 24] < 0   # right circle centre

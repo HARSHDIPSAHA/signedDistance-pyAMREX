@@ -12,7 +12,7 @@ from __future__ import annotations
 import numpy as np
 
 from .. import primitives as sdf
-from sdf3d.geometry import Cylinder3D, Box3D, Intersection3D, Union3D, SDF3D
+from sdf3d.geometry import Cylinder3D, Box3D, SDF3D
 
 
 def NATOFragment(
@@ -49,7 +49,7 @@ def NATOFragment(
     cyl_inf  = Cylinder3D(axis_offset=[0.0, 0.0], radius=fragment_radius)
     cyl_box  = Box3D(half_size=[fragment_radius * 1.2, cylinder_height / 2, fragment_radius * 1.2])
     cyl_geom = (
-        Intersection3D(cyl_inf, cyl_box)
+        (cyl_inf / cyl_box)
         .rotate_x(np.pi / 2)
         .translate(0.0, 0.0, cylinder_height / 2)
     )
@@ -65,4 +65,4 @@ def NATOFragment(
     )
 
     # Union of cylinder + cone
-    return Union3D(cyl_geom, cone_geom)
+    return cyl_geom | cone_geom

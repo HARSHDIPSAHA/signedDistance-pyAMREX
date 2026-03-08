@@ -35,6 +35,7 @@ dev = [
     "ty>=0.0.1",
     "h5py>=3.0",
     "scipy>=1.7",
+    "marimo>=0.17.6",
 ]
 
 # pyAMReX is NOT on PyPI — install separately via:

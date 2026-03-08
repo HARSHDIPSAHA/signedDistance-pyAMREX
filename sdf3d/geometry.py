@@ -70,6 +70,16 @@ class SDF3D:
         """Return the intersection (max) of this shape and *other*."""
         return SDF3D(lambda p: sdf.opIntersection(self.sdf(p), other.sdf(p)))
 
+    # Operator shorthands: A | B → union, A - B → subtract, A / B → intersect
+    def __or__(self, other: SDF3D) -> SDF3D:
+        return self.union(other)
+
+    def __sub__(self, other: SDF3D) -> SDF3D:
+        return self.subtract(other)
+
+    def __truediv__(self, other: SDF3D) -> SDF3D:
+        return self.intersect(other)
+
     # ------------------------------------------------------------------
     # Modifiers
     # ------------------------------------------------------------------
@@ -149,28 +159,38 @@ class SDF3D:
         p = np.stack([X, Y, Z], axis=-1)
         return self.sdf(p)
 
-    def to_multifab(self, amrex_geom, ba, dm):
-        """Fill an AMReX ``MultiFab`` with this geometry's SDF values.
+    def fill(self, grid) -> "amr.MultiFab":
+        """Fill *grid* with this SDF and return a raw ``amrex.space3d.MultiFab``.
 
         Parameters
         ----------
-        amrex_geom:
-            An ``amrex.space3d.Geometry`` object describing the domain.
-        ba:
-            An ``amrex.space3d.BoxArray`` describing the grid decomposition.
-        dm:
-            An ``amrex.space3d.DistributionMapping`` for MPI rank assignment.
+        grid:
+            A :class:`~sdf3d.amrex.MultiFabGrid3D` instance that defines the
+            domain layout (geom, ba, dm).
 
         Returns
         -------
         amrex.space3d.MultiFab
             A single-component MultiFab filled with signed distance values.
         """
-        from .amrex import SDFMultiFab3D
-        lib = SDFMultiFab3D(amrex_geom, ba, dm)
-        mf = lib.create_multifab()
-        lib.fill_multifab(mf, self.sdf)
+        mf = grid.create_multifab()
+        grid.fill_multifab(mf, self.sdf)
         return mf
+
+    def to_multifab(self, amrex_geom, ba, dm) -> "amr.MultiFab":
+        """Convenience: create a :class:`~sdf3d.amrex.MultiFabGrid3D` and fill.
+
+        Equivalent to::
+
+            grid = MultiFabGrid3D(amrex_geom, ba, dm)
+            mf   = shape.fill(grid)
+
+        Returns
+        -------
+        amrex.space3d.MultiFab
+        """
+        from .amrex import MultiFabGrid3D
+        return self.fill(MultiFabGrid3D(amrex_geom, ba, dm))
 
     # ------------------------------------------------------------------
     # Visualisation helpers
@@ -363,43 +383,6 @@ class Torus3D(SDF3D):
         super().__init__(lambda p: sdf.sdTorus(p, t))
 
 
-# ===========================================================================
-# Boolean operation classes
-# ===========================================================================
-
-class Union3D(SDF3D):
-    """Union of two or more 3-D geometries (minimum SDF)."""
-
-    def __init__(self, *geoms: SDF3D) -> None:
-        def _sdf(p: Points3D) -> Distances:
-            d = geoms[0].sdf(p)
-            for g in geoms[1:]:
-                d = sdf.opUnion(d, g.sdf(p))
-            return d
-
-        super().__init__(_sdf)
-
-
-class Intersection3D(SDF3D):
-    """Intersection of two or more 3-D geometries (maximum SDF)."""
-
-    def __init__(self, *geoms: SDF3D) -> None:
-        def _sdf(p: Points3D) -> Distances:
-            d = geoms[0].sdf(p)
-            for g in geoms[1:]:
-                d = sdf.opIntersection(d, g.sdf(p))
-            return d
-
-        super().__init__(_sdf)
-
-
-class Subtraction3D(SDF3D):
-    """Subtract *cutter* from *base*."""
-
-    def __init__(self, base: SDF3D, cutter: SDF3D) -> None:
-        super().__init__(
-            lambda p: sdf.opSubtraction(cutter.sdf(p), base.sdf(p))
-        )
 
 
 # ===========================================================================

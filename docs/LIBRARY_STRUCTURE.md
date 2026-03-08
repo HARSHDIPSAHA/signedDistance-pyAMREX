@@ -18,9 +18,9 @@ A 2D and 3D Signed Distance Function library with STL mesh conversion and option
 ### `sdf2d/` contents
 
 - `primitives.py` — NumPy implementations of all ~50 2D SDF formulas (`sdCircle`, `sdBox2D`, …) and `opTx2D`. Re-exports everything from `_sdf_common`. No AMReX dependency.
-- `geometry.py` — All 2D geometry classes: `Circle2D`, `Box2D`, `Hexagon2D`, … plus `Union2D`, `Intersection2D`, `Subtraction2D`. Transforms: `translate`, `rotate`, `scale`, `round`, `onion`. Every class wraps a lambda over `primitives` and exposes `sdf(p)`.
+- `geometry.py` — All 2D geometry classes: `Circle2D`, `Box2D`, `Hexagon2D`, … Operators `|`, `-`, `/` compose shapes (union, subtraction, intersection). Transforms: `translate`, `rotate`, `scale`, `round`, `onion`. Every class wraps a lambda over `primitives` and exposes `sdf(p)`.
 - `grid.py` — `sample_levelset_2d(geom, bounds, resolution)` → `ndarray` of shape `(ny, nx)`. Also provides `save_npy`.
-- `amrex.py` — `SDFMultiFab2D`: a bound factory for AMReX `MultiFab` output. Construct once with `(geom, ba, dm)`; use `shape.to_multifab(geom, ba, dm)` to create + fill a MultiFab, or call `create_multifab()` / `fill_multifab()` for lower-level control. Requires `amrex.space2d`. Import-guarded so the module loads without AMReX.
+- `amrex.py` — `MultiFabGrid2D`: a named grid context for AMReX `MultiFab` output. Construct once with `(geom, ba, dm)`. Use `shape.fill(grid)` to create + fill a MultiFab, or `shape.to_multifab(geom, ba, dm)` as a single-call convenience. Boolean ops on raw MultiFabs: `grid.union(a, b)`, `grid.subtract(base, cutter)`, `grid.intersect(a, b)`, `grid.negate(a)`. Requires `amrex.space2d`. Import-guarded so the module loads without AMReX.
 - `__init__.py` — Re-exports all public symbols.
 
 ---
@@ -28,12 +28,12 @@ A 2D and 3D Signed Distance Function library with STL mesh conversion and option
 ### `sdf3d/` contents
 
 - `primitives.py` — NumPy implementations of all ~30 3D SDF formulas (`sdSphere`, `sdBox`, …), smooth boolean ops (`opSmoothUnion`, …), and space-warps (`opElongate`, `opRevolution`, `opExtrusion`, `opTwist`, …). Re-exports everything from `_sdf_common`. No AMReX dependency.
-- `geometry.py` — All 3D geometry classes: `Sphere3D`, `Box3D`, `RoundBox3D`, `Cylinder3D`, `ConeExact3D`, `Torus3D`, and `Union3D` / `Intersection3D` / `Subtraction3D`. Transforms: `translate`, `rotate_x/y/z`, `scale`, `elongate`, `round`, `onion`.
+- `geometry.py` — All 3D geometry classes: `Sphere3D`, `Box3D`, `RoundBox3D`, `Cylinder3D`, `ConeExact3D`, `Torus3D`, … Operators `|`, `-`, `/` compose shapes (union, subtraction, intersection). Transforms: `translate`, `rotate_x/y/z`, `scale`, `elongate`, `round`, `onion`.
 - `grid.py` — `sample_levelset_3d(geom, bounds, resolution)` → `ndarray` of shape `(nz, ny, nx)`. Also provides `save_npy`.
-- `amrex.py` — `SDFMultiFab3D`: a bound factory for AMReX `MultiFab` output. Construct once with `(geom, ba, dm)`; use `shape.to_multifab(geom, ba, dm)` to create + fill a MultiFab, or call `create_multifab()` / `fill_multifab()` for lower-level control. Requires `amrex.space3d`. Import-guarded so the module loads without AMReX.
+- `amrex.py` — `MultiFabGrid3D`: a named grid context for AMReX `MultiFab` output. Construct once with `(geom, ba, dm)`. Use `shape.fill(grid)` to create + fill a MultiFab, or `shape.to_multifab(geom, ba, dm)` as a single-call convenience. Boolean ops on raw MultiFabs: `grid.union(a, b)`, `grid.subtract(base, cutter)`, `grid.intersect(a, b)`, `grid.negate(a)`. Requires `amrex.space3d`. Import-guarded so the module loads without AMReX.
 - `examples/` — High-level geometry assemblies:
-  - `nato_stanag.py` — `NATOFragment(lib, …)`: NATO STANAG fragmentation cylinder with conical nose.
-  - `rocket_assembly.py` — `RocketAssembly(lib, …)`: multi-part rocket with body, nose, and fins.
+  - `nato_stanag.py` — `NATOFragment(…)`: NATO STANAG fragmentation cylinder with conical nose.
+  - `rocket_assembly.py` — `RocketAssembly(…)`: multi-part rocket with body, nose, and fins.
 - `__init__.py` — Re-exports all public symbols.
 
 ---
@@ -70,7 +70,8 @@ All tests pass with `pytest` and require only `numpy`. AMReX is not needed.
 | `test_sdf3d_grid.py` | `sample_levelset_3d` shape/sign, `save_npy` round-trip |
 | `test_complex.py` | `NATOFragment` and `RocketAssembly` (mock lib, no AMReX) |
 | `test_stl2sdf.py` | `_stl_to_triangles` (binary + ASCII), `_triangles_to_sdf` (7 Voronoi regions, ray casting, sign), `stl_to_geometry` — all synthetic, no downloads |
-| `test_amrex.py` | `SDFMultiFab2D` and `SDFMultiFab3D` — **skipped automatically without pyAMReX** |
+| `test_amrex_2d.py` | `MultiFabGrid2D` — **skipped automatically without pyAMReX** |
+| `test_amrex_3d.py` | `MultiFabGrid3D` — **skipped automatically without pyAMReX; run in isolation** |
 
 ```bash
 uv run pytest tests/ -v
@@ -90,9 +91,9 @@ Standalone runnable demos. Outputs (PNG, HTML, NPY) are written to `examples/`.
 
 | File | Description |
 |------|-------------|
-| `sdf3d/union_example.py` | Two spheres joined with `Union3D` |
-| `sdf3d/intersection_example.py` | Sphere–sphere intersection |
-| `sdf3d/subtraction_example.py` | Sphere with spherical cavity via `Subtraction3D` |
+| `sdf3d/union_example.py` | Two spheres joined with `\|` operator |
+| `sdf3d/intersection_example.py` | Sphere–sphere intersection with `/` operator |
+| `sdf3d/subtraction_example.py` | Sphere with spherical cavity via `-` operator |
 | `sdf3d/elongation_example.py` | Sphere elongated into a capsule |
 | `sdf3d/complex_example.py` | Chains all four operations, one PNG per step |
 | `stl2sdf/nasa_shapes_demo.py` | Downloads 4 NASA meshes (Orion/CubeSat/wheel/Eros), saves Plotly HTML report |
@@ -115,5 +116,5 @@ Geometry classes      stl2sdf.stl_to_geometry
       Output:  NumPy ndarray  OR  AMReX MultiFab
 ```
 
-- **NumPy path** (no AMReX): `sample_levelset_2d` / `sample_levelset_3d` → `np.ndarray`
-- **AMReX path**: `SDFMultiFab2D` / `SDFMultiFab3D` (bound factories) → `amr.MultiFab`
+- **NumPy path** (no AMReX): `shape.to_array(bounds, resolution)` → `np.ndarray`
+- **AMReX path**: `shape.fill(MultiFabGrid2D/3D)` or `shape.to_multifab(geom, ba, dm)` → `amr.MultiFab`

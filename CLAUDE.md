@@ -12,15 +12,15 @@ pySdf/
 ├── sdf2d/
 │   ├── __init__.py       # Exports all 2D classes
 │   ├── primitives.py     # All 2D SDF math; re-exports _sdf_common + adds 2D primitives + opTx2D
-│   ├── geometry.py       # Circle2D, Box2D, ... + Union2D, Intersection2D, Subtraction2D
+│   ├── geometry.py       # Circle2D, Box2D, ...; operators |/-// compose shapes
 │   ├── grid.py           # sample_levelset_2d(geom, bounds, resolution) -> ndarray
-│   └── amrex.py          # SDFMultiFab2D (requires amrex.space2d)
+│   └── amrex.py          # MultiFabGrid2D (requires amrex.space2d)
 ├── sdf3d/
 │   ├── __init__.py       # Exports all 3D classes
 │   ├── primitives.py     # All 3D SDF math; re-exports _sdf_common + adds 3D primitives + warps
-│   ├── geometry.py       # Sphere3D, Box3D, ... + Union3D, Intersection3D, Subtraction3D
+│   ├── geometry.py       # Sphere3D, Box3D, ...; operators |/-// compose shapes
 │   ├── grid.py           # sample_levelset_3d(geom, bounds, resolution) -> ndarray
-│   ├── amrex.py          # SDFMultiFab3D (requires amrex.space3d)
+│   ├── amrex.py          # MultiFabGrid3D (requires amrex.space3d)
 │   └── examples/
 │       ├── nato_stanag.py      # NATOFragment(lib, diameter, L_over_D, cone_angle_deg)
 │       └── rocket_assembly.py  # RocketAssembly(lib, body_radius, ...)
@@ -52,10 +52,10 @@ pySdf/
 - `phi > 0` — outside the solid
 
 ## Key naming conventions
-- 3D geometry: `Sphere3D`, `Box3D`, `Union3D`, `Intersection3D`, `Subtraction3D`
-- 2D geometry: `Circle2D`, `Box2D`, `Union2D`, `Intersection2D`, `Subtraction2D`
+- 3D geometry: `Sphere3D`, `Box3D`, `Torus3D`, … — use `|` `-` `/` operators to compose
+- 2D geometry: `Circle2D`, `Box2D`, `Hexagon2D`, … — use `|` `-` `/` operators to compose
 - Grid functions: `sample_levelset_2d` / `sample_levelset_3d`
-- AMReX classes: `SDFMultiFab2D` / `SDFMultiFab3D`
+- AMReX classes: `MultiFabGrid2D` / `MultiFabGrid3D`
 
 ## Running tests
 ```bash
@@ -92,8 +92,8 @@ imported in the same Python process**. Always run AMReX test files in isolation.
 
 ### opSubtraction argument order
 `opSubtraction(d1, d2) = max(-d1, d2)` — d1 is the CUTTER, d2 is the BASE.
-- `Subtraction3D(base, cutter)` calls `opSubtraction(cutter.sdf(p), base.sdf(p))`
-- `a.subtract(b)` means "subtract b from a" — b is the cutter
+- `a.subtract(b)` / `a - b` means "subtract b from a" — b is the cutter
+- `MultiFabGrid3D.subtract(base, cutter)` — base first, cutter second (consistent with SDF syntax)
 
 ### GLSL-to-numpy simultaneous update
 `p -= 2.0*min(dot(k,p),0.0)*k` in GLSL updates both components simultaneously.

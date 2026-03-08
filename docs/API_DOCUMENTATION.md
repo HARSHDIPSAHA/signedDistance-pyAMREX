@@ -27,14 +27,14 @@
 ### NumPy mode (no AMReX)
 
 ```python
-from sdf3d import Sphere3D, Box3D, Union3D, sample_levelset_3d
+from sdf3d import Sphere3D, Box3D
 import numpy as np
 
 sphere = Sphere3D(radius=0.3)
 box    = Box3D(half_size=(0.2, 0.2, 0.2)).translate(0.4, 0.0, 0.0)
-shape  = Union3D(sphere, box)
+shape  = sphere | box              # union operator
 
-phi = sample_levelset_3d(shape, bounds=((-1,1),(-1,1),(-1,1)), resolution=(64,64,64))
+phi = shape.to_array(bounds=((-1,1),(-1,1),(-1,1)), resolution=(64,64,64))
 # phi.shape == (64, 64, 64);  phi < 0 inside, phi > 0 outside
 ```
 
@@ -42,7 +42,7 @@ phi = sample_levelset_3d(shape, bounds=((-1,1),(-1,1),(-1,1)), resolution=(64,64
 
 ```python
 import amrex.space3d as amr
-from sdf3d import SDFMultiFab3D, Sphere3D
+from sdf3d import Sphere3D, Box3D, MultiFabGrid3D
 
 amr.initialize([])
 try:
@@ -52,9 +52,14 @@ try:
     ba       = amr.BoxArray(domain); ba.max_size(32)
     dm       = amr.DistributionMapping(ba)
 
-    lib      = SDFMultiFab3D(geom, ba, dm)
-    levelset = Sphere3D(0.3).to_multifab(geom, ba, dm)
-    # levelset is an amr.MultiFab
+    # Single shape — convenience wrapper
+    mf = Sphere3D(0.3).to_multifab(geom, ba, dm)
+
+    # Multiple shapes — named grid context
+    grid = MultiFabGrid3D(geom, ba, dm)
+    mf_a = Sphere3D(0.3).fill(grid)
+    mf_b = Box3D((0.2, 0.2, 0.2)).fill(grid)
+    mf_u = grid.union(mf_a, mf_b)
 finally:
     amr.finalize()
 ```
@@ -148,19 +153,22 @@ from sdf2d import (
 ### Boolean operations
 
 ```python
-from sdf2d import Union2D, Intersection2D, Subtraction2D
-
-u = Union2D(a, b)            # SDF = min(a, b)
-i = Intersection2D(a, b)     # SDF = max(a, b)
-s = Subtraction2D(base, cutter)   # SDF = max(-cutter, base)
+u = a | b        # union        — SDF = min(a, b)
+i = a / b        # intersection — SDF = max(a, b)
+s = a - b        # subtraction  — SDF = max(-b, a), reads "a minus b"
 
 # Equivalent method syntax:
 u = a.union(b)
 i = a.intersect(b)
-s = a.subtract(b)   # "subtract b from a"
+s = a.subtract(b)
 ```
 
-`Union2D` accepts more than two arguments: `Union2D(a, b, c, ...)`.
+Chain multiple shapes with `functools.reduce` or repeated operators:
+
+```python
+import functools, operator
+shape = functools.reduce(operator.or_, [circle_a, circle_b, circle_c])
+```
 
 ### Grid sampling
 
@@ -179,33 +187,33 @@ save_npy("output/levelset.npy", phi)  # creates parent dirs automatically
 
 ### AMReX (2D)
 
-`SDFMultiFab2D` is a **bound factory**: construct it once with the AMReX grid
-layout and it reuses that layout for every call.
+`MultiFabGrid2D` is a **named grid context**: construct it once with the AMReX
+grid layout; all fill and boolean operations go through it.
 
 ```python
-from sdf2d import SDFMultiFab2D, Circle2D
+from sdf2d import MultiFabGrid2D, Circle2D, Box2D
 import amrex.space2d as amr
 
-mf = Circle2D(0.3).to_multifab(geom, ba, dm)   # creates + fills a MultiFab
+# Convenience: single shape → MultiFab
+mf = Circle2D(0.3).to_multifab(geom, ba, dm)
+
+# Named grid context: fill + combine multiple shapes
+grid   = MultiFabGrid2D(geom, ba, dm)
+mf_c   = Circle2D(0.3).fill(grid)      # create + fill a new MultiFab
+mf_b   = Box2D((0.2, 0.3)).fill(grid)
+
+# Boolean operations on MultiFabs (element-wise on already-filled grids)
+mf_u = grid.union(mf_c, mf_b)          # min(c, b)
+mf_s = grid.subtract(mf_b, mf_c)       # box with circle carved out
+mf_i = grid.intersect(mf_c, mf_b)      # max(c, b)
+mf_n = grid.negate(mf_c)               # flip sign
 ```
 
-`to_multifab` is a thin wrapper over the two lower-level `SDFMultiFab2D` methods:
+Lower-level access (rarely needed):
 
 ```python
-lib = SDFMultiFab2D(geom, ba, dm)   # holds the grid layout
-mf = lib.create_multifab()          # allocate empty MultiFab
-lib.fill_multifab(mf, geom_obj.sdf) # write SDF values into it
-```
-
-Use `fill_multifab` directly to reuse an existing MultiFab or pass a raw
-callable instead of a geometry object.
-
-```python
-# Boolean operations work on MultiFabs directly
-mf = lib.union(mf1, mf2)
-mf = lib.subtract(base, cutter)
-mf = lib.intersect(mf1, mf2)
-mf = lib.negate(mf)
+mf = grid.create_multifab()            # allocate empty MultiFab
+grid.fill_multifab(mf, circle.sdf)     # fill with any callable sdf(p)
 ```
 
 ## 3D API — `sdf3d`
@@ -253,19 +261,22 @@ from sdf3d import Sphere3D, Box3D, RoundBox3D, Cylinder3D, ConeExact3D, Torus3D
 ### Boolean operations
 
 ```python
-from sdf3d import Union3D, Intersection3D, Subtraction3D
+u = a | b        # union        — SDF = min(a, b)
+i = a / b        # intersection — SDF = max(a, b)
+s = a - b        # subtraction  — SDF = max(-b, a), reads "a minus b"
 
-u = Union3D(a, b)
-i = Intersection3D(a, b)
-s = Subtraction3D(base, cutter)   # SDF = max(-cutter, base)
-
-# Method syntax:
+# Equivalent method syntax:
 u = a.union(b)
 i = a.intersect(b)
-s = a.subtract(b)   # "subtract b from a"
+s = a.subtract(b)
 ```
 
-`Union3D` accepts more than two arguments.
+Chain multiple shapes:
+
+```python
+import functools, operator
+shape = functools.reduce(operator.or_, [sphere_a, sphere_b, sphere_c])
+```
 
 ### Grid sampling
 
@@ -288,14 +299,12 @@ save_npy("output/levelset.npy", phi)
 from sdf3d.examples import NATOFragment, RocketAssembly
 ```
 
-Both accept a `lib` argument: pass a real `SDFMultiFab3D` for AMReX output,
-or a mock object for pure-numpy use (see `tests/test_complex.py`).
+Both return an `SDF3D` object — composable with all the usual operators and methods.
 
 #### `NATOFragment`
 
 ```python
-geom, _ = NATOFragment(
-    lib,
+geom = NATOFragment(
     diameter=14.30e-3,    # fragment diameter (m)
     L_over_D=1.09,        # length-to-diameter ratio
     cone_angle_deg=20.0,  # nose cone half-angle (degrees)
@@ -305,8 +314,7 @@ geom, _ = NATOFragment(
 #### `RocketAssembly`
 
 ```python
-geom, _ = RocketAssembly(
-    lib,
+geom = RocketAssembly(
     body_radius=0.15,
     L_extra=0.40,
     nose_len=0.25,
@@ -319,33 +327,33 @@ geom, _ = RocketAssembly(
 
 ### AMReX (3D)
 
-`SDFMultiFab3D` is a **bound factory**: construct it once with the AMReX grid
-layout and it reuses that layout for every call.
+`MultiFabGrid3D` is a **named grid context**: construct it once with the AMReX
+grid layout; all fill and boolean operations go through it.
 
 ```python
-from sdf3d import SDFMultiFab3D, Sphere3D
+from sdf3d import MultiFabGrid3D, Sphere3D, Box3D
 import amrex.space3d as amr
 
-mf = Sphere3D(0.3).to_multifab(geom, ba, dm)  # creates + fills a MultiFab
+# Convenience: single shape → MultiFab
+mf = Sphere3D(0.3).to_multifab(geom, ba, dm)
+
+# Named grid context: fill + combine multiple shapes
+grid   = MultiFabGrid3D(geom, ba, dm)
+mf_s   = Sphere3D(0.3).fill(grid)       # create + fill a new MultiFab
+mf_b   = Box3D((0.2, 0.2, 0.2)).fill(grid)
+
+# Boolean operations on MultiFabs (element-wise on already-filled grids)
+mf_u = grid.union(mf_s, mf_b)           # min(s, b)
+mf_s = grid.subtract(mf_b, mf_s)        # box with sphere carved out
+mf_i = grid.intersect(mf_s, mf_b)       # max(s, b)
+mf_n = grid.negate(mf_s)                # flip sign
 ```
 
-`to_multifab` is a thin wrapper over the two lower-level `SDFMultiFab3D` methods:
+Lower-level access (rarely needed):
 
 ```python
-lib = SDFMultiFab3D(geom, ba, dm)   # holds the grid layout
-mf = lib.create_multifab()          # allocate empty MultiFab
-lib.fill_multifab(mf, geom_obj.sdf) # write SDF values into it
-```
-
-Use `fill_multifab` directly to reuse an existing MultiFab or pass a raw
-callable instead of a geometry object.
-
-```python
-# Boolean operations work on MultiFabs directly
-mf = lib.union(mf1, mf2)
-mf = lib.subtract(base, cutter)
-mf = lib.intersect(mf1, mf2)
-mf = lib.negate(mf)
+mf = grid.create_multifab()             # allocate empty MultiFab
+grid.fill_multifab(mf, sphere.sdf)      # fill with any callable sdf(p)
 ```
 
 ## STL → SDF — `stl2sdf`
@@ -391,9 +399,9 @@ uv run python examples/stl2sdf/nasa_boolean_demo.py          # mesh union/subtra
 
 ## AMReX integration
 
-Both `SDFMultiFab2D` and `SDFMultiFab3D` are **bound factories**: construct
-each one once with the AMReX grid layout (`geom`, `ba`, `dm`) and it reuses
-that layout automatically on every call — like a database connection object.
+`MultiFabGrid2D` / `MultiFabGrid3D` are **named grid contexts**: construct one
+with the AMReX grid layout (`geom`, `ba`, `dm`) and it holds that layout for
+all fill and boolean operations.
 
 ```python
 import amrex.space3d as amr   # or amrex.space2d for 2D
@@ -406,11 +414,19 @@ try:
     ba       = amr.BoxArray(domain); ba.max_size(32)
     dm       = amr.DistributionMapping(ba)
 
-    from sdf3d import Sphere3D
-    mf  = Sphere3D(0.3).to_multifab(geom, ba, dm)  # creates + fills a MultiFab
+    from sdf3d import Sphere3D, Box3D, MultiFabGrid3D
+
+    # Single shape (convenience)
+    mf = Sphere3D(0.3).to_multifab(geom, ba, dm)
+
+    # Multiple shapes with grid-level boolean ops
+    grid = MultiFabGrid3D(geom, ba, dm)
+    mf_s = Sphere3D(0.3).fill(grid)
+    mf_b = Box3D((0.2, 0.2, 0.2)).fill(grid)
+    mf_u = grid.union(mf_s, mf_b)
 
     varnames = amr.Vector_string(["phi"])
-    amr.write_single_level_plotfile("output/levelset", mf, varnames, geom, 0.0, 0)
+    amr.write_single_level_plotfile("output/levelset", mf_u, varnames, geom, 0.0, 0)
 finally:
     amr.finalize()
 ```
@@ -454,7 +470,7 @@ Functions follow `sd<Shape>` (signed) or `ud<Shape>` (unsigned); operators use `
 
 - **Sign convention:** `phi < 0` inside, `phi = 0` on surface, `phi > 0` outside.
 - **Grid layout:** `sample_levelset_3d` returns shape `(nz, ny, nx)`. Access as `phi[iz, iy, ix]`.
-- **Subtraction argument order:** `Subtraction3D(base, cutter)` — first arg is the base shape, second is what gets cut away. `a.subtract(b)` means "cut b from a".
+- **Subtraction argument order:** `a - b` / `a.subtract(b)` — `a` is the base, `b` is what gets cut away. `MultiFabGrid3D.subtract(base, cutter)` follows the same order.
 - **AMReX initialize/finalize:** Always wrap in `try/finally` with `amr.finalize()`.
 - **Chaining transforms:**
   ```python
