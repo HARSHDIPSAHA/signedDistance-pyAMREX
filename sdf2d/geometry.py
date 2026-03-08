@@ -34,14 +34,14 @@ class SDF2D:
     """
 
     def __init__(self, func: SDFFunc) -> None:
-        self._func = func
+        self.func = func
 
     def sdf(self, p: Points2D) -> Distances:
         """Evaluate signed distance at *p* (shape ``(..., 2)``)."""
-        return self._func(p)
+        return self.func(p)
 
     def __call__(self, p: Points2D) -> Distances:
-        return self._func(p)
+        return self.func(p)
 
     # ------------------------------------------------------------------
     # Boolean operations

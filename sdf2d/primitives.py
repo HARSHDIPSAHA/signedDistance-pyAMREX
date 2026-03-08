@@ -11,40 +11,43 @@ Formulas are adapted from Inigo Quilez's distance function reference:
 https://iquilezles.org/articles/distfunctions2d/
 """
 
-from __future__ import annotations
-
 import numpy as np
 import numpy.typing as npt
 from typing import TypeAlias
 
-from _sdf_common import *  # noqa: F401, F403  — re-export shared helpers
+from _sdf_common import (
+    FloatArray, Distances,
+    vec2, vec3,
+    length, dot, dot2, clamp, safe_div,
+    opUnion, opSubtraction, opIntersection,
+    opRound, opOnion, opScale,
+)
 
 Points2D:  TypeAlias = npt.NDArray[np.floating]  # shape (..., 2)
-Distances: TypeAlias = npt.NDArray[np.floating]  # shape (...)
 
 
 # ===========================================================================
 # 2-D primitive SDFs
 # ===========================================================================
 
-def sdCircle(p: _F, r: float) -> _F:
+def sdCircle(p: Points2D, r: float) -> Distances:
     """2-D circle of radius *r* centred at origin."""
     return length(p) - r
 
 
-def sdBox2D(p: _F, b: _F) -> _F:
+def sdBox2D(p: Points2D, b: FloatArray) -> Distances:
     """2-D axis-aligned box with half-extents *b* ``(bx, by)``."""
     d = np.abs(p) - b
     return length(np.maximum(d, 0.0)) + np.minimum(np.maximum(d[..., 0], d[..., 1]), 0.0)
 
 
-def sdRoundedBox2D(p: _F, b: _F, r: float) -> _F:
+def sdRoundedBox2D(p: Points2D, b: FloatArray, r: float) -> Distances:
     """2-D rounded box with half-extents *b* and corner radius *r*."""
     d = np.abs(p) - b + r
     return length(np.maximum(d, 0.0)) + np.minimum(np.maximum(d[..., 0], d[..., 1]), 0.0) - r
 
 
-def sdOrientedBox2D(p: _F, a: _F, b: _F, th: float) -> _F:
+def sdOrientedBox2D(p: Points2D, a: FloatArray, b: FloatArray, th: float) -> Distances:
     """2-D oriented box from *a* to *b* with half-thickness *th*."""
     l = length(b - a)
     d = (b - a) / l
@@ -54,7 +57,7 @@ def sdOrientedBox2D(p: _F, a: _F, b: _F, th: float) -> _F:
     return length(np.maximum(q, 0.0)) + np.minimum(np.maximum(q[..., 0], q[..., 1]), 0.0)
 
 
-def sdSegment2D(p: _F, a: _F, b: _F) -> _F:
+def sdSegment2D(p: Points2D, a: FloatArray, b: FloatArray) -> Distances:
     """2-D line segment from *a* to *b* (zero-width)."""
     pa = p - a
     ba = b - a
@@ -62,7 +65,7 @@ def sdSegment2D(p: _F, a: _F, b: _F) -> _F:
     return length(pa - ba * h[..., None])
 
 
-def sdRhombus2D(p: _F, b: _F) -> _F:
+def sdRhombus2D(p: Points2D, b: FloatArray) -> Distances:
     """2-D rhombus with half-extents *b*."""
     px = np.abs(p[..., 0]);  py = np.abs(p[..., 1])
     # IQ: negate b.y, then h = clamp((dot(b,p) + b.y²) / dot(b,b), 0, 1)
@@ -72,7 +75,7 @@ def sdRhombus2D(p: _F, b: _F) -> _F:
     return length(vec2(px, py)) * np.sign(px)
 
 
-def sdTrapezoid2D(p: _F, r1: float, r2: float, he: float) -> _F:
+def sdTrapezoid2D(p: Points2D, r1: float, r2: float, he: float) -> Distances:
     """2-D isosceles trapezoid with base radii *r1*/*r2* and height *he*."""
     k1 = vec2(r2, he)
     k2 = vec2(r2 - r1, 2.0 * he)
@@ -85,7 +88,7 @@ def sdTrapezoid2D(p: _F, r1: float, r2: float, he: float) -> _F:
     return s * np.sqrt(np.minimum(dot2(ca), dot2(cb)))
 
 
-def sdParallelogram2D(p: _F, wi: float, he: float, sk: float) -> _F:
+def sdParallelogram2D(p: Points2D, wi: float, he: float, sk: float) -> Distances:
     """2-D parallelogram with half-width *wi*, half-height *he*, x-skew *sk*.
 
     Vertices: ``(-wi,-he)``, ``(wi,-he)``, ``(wi+sk,he)``, ``(-wi+sk,he)``.
@@ -95,7 +98,7 @@ def sdParallelogram2D(p: _F, wi: float, he: float, sk: float) -> _F:
     return sdPolygon2D(p, v)
 
 
-def sdEquilateralTriangle2D(p: _F, r: float) -> _F:
+def sdEquilateralTriangle2D(p: Points2D, r: float) -> Distances:
     """2-D equilateral triangle with circumradius *r*."""
     k  = np.sqrt(3.0)
     px = np.abs(p[..., 0]) - r
@@ -108,7 +111,7 @@ def sdEquilateralTriangle2D(p: _F, r: float) -> _F:
     return -length(vec2(new_px, new_py)) * np.sign(new_py)
 
 
-def sdTriangleIsosceles2D(p: _F, q: _F) -> _F:
+def sdTriangleIsosceles2D(p: Points2D, q: FloatArray) -> Distances:
     """2-D isosceles triangle; *q* = ``(half_base, height)``."""
     px = np.abs(p[..., 0]);  py = p[..., 1]
     pv = vec2(px, py)
@@ -124,7 +127,7 @@ def sdTriangleIsosceles2D(p: _F, q: _F) -> _F:
     return -np.sqrt(d[..., 0]) * np.sign(d[..., 1])
 
 
-def sdTriangle2D(p: _F, p0: _F, p1: _F, p2: _F) -> _F:
+def sdTriangle2D(p: Points2D, p0: FloatArray, p1: FloatArray, p2: FloatArray) -> Distances:
     """2-D triangle from three vertices *p0*, *p1*, *p2*."""
     e0  = p1 - p0;  v0 = p - p0
     e1  = p2 - p1;  v1 = p - p1
@@ -140,7 +143,7 @@ def sdTriangle2D(p: _F, p0: _F, p1: _F, p2: _F) -> _F:
     return -np.sqrt(d[..., 0]) * np.sign(d[..., 1])
 
 
-def sdUnevenCapsule2D(p: _F, r1: float, r2: float, h: float) -> _F:
+def sdUnevenCapsule2D(p: Points2D, r1: float, r2: float, h: float) -> Distances:
     """2-D capsule with radii *r1* (bottom) and *r2* (top), height *h*."""
     px   = np.abs(p[..., 0])
     py   = p[..., 1]
@@ -154,7 +157,7 @@ def sdUnevenCapsule2D(p: _F, r1: float, r2: float, h: float) -> _F:
                     dot(vec2(px, py), vec2(a, b)) - r1))
 
 
-def sdPentagon2D(p: _F, r: float) -> _F:
+def sdPentagon2D(p: Points2D, r: float) -> Distances:
     """2-D regular pentagon with circumradius *r*."""
     k  = np.array([0.809016994, 0.587785252, 0.726542528])
     px = np.abs(p[..., 0])
@@ -169,7 +172,7 @@ def sdPentagon2D(p: _F, r: float) -> _F:
     return length(vec2(px, py)) * np.sign(py)
 
 
-def sdHexagon2D(p: _F, r: float) -> _F:
+def sdHexagon2D(p: Points2D, r: float) -> Distances:
     """2-D regular hexagon with inradius *r* (distance from centre to a flat face)."""
     k  = np.array([-0.866025404, 0.5, 0.577350269])
     px = np.abs(p[..., 0])
@@ -182,7 +185,7 @@ def sdHexagon2D(p: _F, r: float) -> _F:
     return length(vec2(px, py)) * np.sign(py)
 
 
-def sdOctagon2D(p: _F, r: float) -> _F:
+def sdOctagon2D(p: Points2D, r: float) -> Distances:
     """2-D regular octagon with inradius *r*."""
     k  = np.array([-0.9238795325, 0.3826834323, 0.4142135623])
     px = np.abs(p[..., 0])
@@ -197,7 +200,7 @@ def sdOctagon2D(p: _F, r: float) -> _F:
     return length(vec2(px, py)) * np.sign(py)
 
 
-def sdHexagram2D(p: _F, r: float) -> _F:
+def sdHexagram2D(p: Points2D, r: float) -> Distances:
     """2-D hexagram (6-pointed star) with circumradius *r*."""
     k  = np.array([-0.5, 0.8660254038, 0.5773502692, 1.7320508076])
     px = np.abs(p[..., 0])
@@ -226,7 +229,7 @@ def sdHexagram2D(p: _F, r: float) -> _F:
 #     p += ecs*clamp( -dot(p,ecs), 0.0, r*acs.y/ecs.y);
 #     return length(p)*sign(p.x);
 # }
-def sdStar(p: _F, r: float, n: int, m: float) -> _F:
+def sdStar(p: Points2D, r: float, n: int, m: float) -> Distances:
     """2-D N-pointed star; *r* radius, *n* points, *m* inner factor (2 ≤ m ≤ n)."""
     if not (2 <= m <= n):
         raise ValueError(f"Invalid star parameters: n={n}, m={m} (require 2 ≤ m ≤ n)")
@@ -246,7 +249,7 @@ def sdStar(p: _F, r: float, n: int, m: float) -> _F:
     return length(vec2(px, py)) * np.sign(px)
 
 
-def sdPie2D(p: _F, c: _F, r: float) -> _F:
+def sdPie2D(p: Points2D, c: FloatArray, r: float) -> Distances:
     """2-D pie sector; *c* = ``(sin, cos)`` of half-angle, *r* radius."""
     px = np.abs(p[..., 0]);  py = p[..., 1]
     l  = length(p) - r
@@ -255,7 +258,7 @@ def sdPie2D(p: _F, c: _F, r: float) -> _F:
     return np.maximum(l, m * np.sign(c[1] * px - c[0] * py))
 
 
-def sdCutDisk2D(p: _F, r: float, h: float) -> _F:
+def sdCutDisk2D(p: Points2D, r: float, h: float) -> Distances:
     """2-D circle of radius *r* with planar cut at height *h*."""
     w    = np.sqrt(r * r - h * h)
     px   = np.abs(p[..., 0]);  py = p[..., 1]
@@ -265,7 +268,7 @@ def sdCutDisk2D(p: _F, r: float, h: float) -> _F:
            np.where(c2, h - py, length(vec2(px, py) - vec2(w, h))))
 
 
-def sdArc2D(p: _F, sc: _F, ra: float, rb: float) -> _F:
+def sdArc2D(p: Points2D, sc: FloatArray, ra: float, rb: float) -> Distances:
     """2-D arc; *sc* = ``(sin, cos)`` of half-angle, *ra* radius, *rb* thickness."""
     px   = np.abs(p[..., 0]);  py = p[..., 1]
     cond = sc[1] * px > sc[0] * py
@@ -274,13 +277,13 @@ def sdArc2D(p: _F, sc: _F, ra: float, rb: float) -> _F:
                     np.abs(length(p) - ra) - rb)
 
 
-def sdRing2D(p: _F, r1: float, r2: float) -> _F:
+def sdRing2D(p: Points2D, r1: float, r2: float) -> Distances:
     """2-D ring (annulus) with inner radius *r1* and outer radius *r2*."""
     l = length(p)
     return np.maximum(r1 - l, l - r2)
 
 
-def sdHorseshoe2D(p: _F, c: _F, r: float, w: _F) -> _F:
+def sdHorseshoe2D(p: Points2D, c: FloatArray, r: float, w: FloatArray) -> Distances:
     """2-D horseshoe; *c* = ``(sin, cos)`` of gap half-angle, *r* radius, *w* arm widths."""
     px = np.abs(p[..., 0]);  py = p[..., 1]
     l  = length(p)
@@ -298,7 +301,7 @@ def sdHorseshoe2D(p: _F, c: _F, r: float, w: _F) -> _F:
     return length(np.maximum(vec2(qx, qy), 0.0)) + np.minimum(0.0, np.maximum(qx, qy))
 
 
-def sdVesica2D(p: _F, r: float, d: float) -> _F:
+def sdVesica2D(p: Points2D, r: float, d: float) -> Distances:
     """2-D vesica piscis; *r* radius, *d* half-distance between circle centres."""
     px = np.abs(p[..., 0]);  py = p[..., 1]
     b  = np.sqrt(r * r - d * d)
@@ -308,7 +311,7 @@ def sdVesica2D(p: _F, r: float, d: float) -> _F:
                     length(vec2(px, py) - vec2(-d, 0.0)) - r)
 
 
-def sdMoon2D(p: _F, d: float, ra: float, rb: float) -> _F:
+def sdMoon2D(p: Points2D, d: float, ra: float, rb: float) -> Distances:
     """2-D crescent moon; *d* offset, *ra* outer radius, *rb* inner radius."""
     py = np.abs(p[..., 1])
     a  = (ra * ra - rb * rb + d * d) / (2.0 * d)
@@ -319,7 +322,7 @@ def sdMoon2D(p: _F, d: float, ra: float, rb: float) -> _F:
                     np.maximum(length(p) - ra, -(length(vec2(p[..., 0] - d, py)) - rb)))
 
 
-def sdRoundedCross2D(p: _F, h: float) -> _F:
+def sdRoundedCross2D(p: Points2D, h: float) -> Distances:
     """2-D rounded cross of size *h*."""
     k   = 0.5 * (h + 1.0 / h)
     px  = np.abs(p[..., 0]);  py = np.abs(p[..., 1])
@@ -330,7 +333,7 @@ def sdRoundedCross2D(p: _F, h: float) -> _F:
     return np.where(cond, inside, outside)
 
 
-def sdEgg2D(p: _F, ra: float, rb: float) -> _F:
+def sdEgg2D(p: Points2D, ra: float, rb: float) -> Distances:
     """2-D egg; *ra* large radius, *rb* small radius."""
     k  = np.sqrt(3.0)
     px = np.abs(p[..., 0]);  py = p[..., 1]
@@ -343,7 +346,7 @@ def sdEgg2D(p: _F, ra: float, rb: float) -> _F:
                              length(vec2(px + r, py)) - 2.0 * r)) - rb
 
 
-def sdHeart2D(p: _F) -> _F:
+def sdHeart2D(p: Points2D) -> Distances:
     """2-D heart shape (unit-scale)."""
     px = np.abs(p[..., 0]);  py = p[..., 1]
     # IQ: (px+py>1) ? sqrt(dot2(p-vec2(0.25,0.75)))-sqrt(2)/4
@@ -358,7 +361,7 @@ def sdHeart2D(p: _F) -> _F:
     return np.where(cond, inside, outside)
 
 
-def sdCross2D(p: _F, b: _F, r: float) -> _F:
+def sdCross2D(p: Points2D, b: FloatArray, r: float) -> Distances:
     """2-D plus-sign cross; *b* = ``(half_arm_len, half_arm_width)``, *r* rounding."""
     px = np.abs(p[..., 0]);  py = np.abs(p[..., 1])
     c  = px > py
@@ -369,14 +372,14 @@ def sdCross2D(p: _F, b: _F, r: float) -> _F:
     return np.sign(k) * length(np.maximum(w, 0.0)) + r
 
 
-def sdRoundedX2D(p: _F, w: float, r: float) -> _F:
+def sdRoundedX2D(p: Points2D, w: float, r: float) -> Distances:
     """2-D rounded X (cross at 45°); *w* width, *r* rounding."""
     px = np.abs(p[..., 0]);  py = np.abs(p[..., 1])
     q  = (px + py - w) * 0.5
     return length(vec2(px - q, py - q)) - r
 
 
-def sdPolygon2D(p: _F, v: _F) -> _F:
+def sdPolygon2D(p: Points2D, v: FloatArray) -> Distances:
     """2-D polygon from *N* vertices *v* (shape ``(N, 2)``)."""
     N = v.shape[0]
     d = dot2(p - v[0])
@@ -396,7 +399,7 @@ def sdPolygon2D(p: _F, v: _F) -> _F:
     return s * np.sqrt(d)
 
 
-def sdEllipse2D(p: _F, ab: _F) -> _F:
+def sdEllipse2D(p: Points2D, ab: FloatArray) -> Distances:
     """2-D ellipse with semi-axes *ab* = ``(a, b)``."""
     px = np.abs(p[..., 0]);  py = np.abs(p[..., 1])
     # IQ swaps if p.x > p.y so that after swap p.x <= p.y; ab swaps with p
@@ -430,7 +433,7 @@ def sdEllipse2D(p: _F, ab: _F) -> _F:
     return length(vec2(r_x - px_s, r_y - py_s)) * np.sign(py_s - r_y)
 
 
-def sdParabola2D(p: _F, k: float) -> _F:
+def sdParabola2D(p: Points2D, k: float) -> Distances:
     """2-D parabola ``y = k·x²``; *k* is the curvature."""
     px = np.abs(p[..., 0]);  py = p[..., 1]
     ik = 1.0 / k
@@ -447,7 +450,7 @@ def sdParabola2D(p: _F, k: float) -> _F:
     return length(vec2(px - x, py - k * x * x)) * np.sign(px - x)
 
 
-def sdParabolaSegment2D(p: _F, wi: float, he: float) -> _F:
+def sdParabolaSegment2D(p: Points2D, wi: float, he: float) -> Distances:
     """2-D bounded parabola segment; *wi* half-width, *he* height."""
     px = np.abs(p[..., 0]);  py = p[..., 1]
     ik = wi * wi / he
@@ -462,7 +465,7 @@ def sdParabolaSegment2D(p: _F, wi: float, he: float) -> _F:
     return length(vec2(px - x, py - he + x * x * he / (wi * wi))) * np.sign(ik * (py - he) + px * px)
 
 
-def sdBezier2D(p: _F, A: _F, B: _F, C: _F) -> _F:
+def sdBezier2D(p: Points2D, A: FloatArray, B: FloatArray, C: FloatArray) -> Distances:
     """2-D quadratic Bézier curve with control points *A*, *B* (ctrl), *C*."""
     a   = B - A;  b = A - 2.0 * B + C;  c = a * 2.0;  d = A - p
     kk  = 1.0 / dot2(b)
@@ -484,7 +487,7 @@ def sdBezier2D(p: _F, A: _F, B: _F, C: _F) -> _F:
     return length(q3)
 
 
-def sdBlobbyCross2D(p: _F, he: float) -> _F:
+def sdBlobbyCross2D(p: Points2D, he: float) -> Distances:
     """2-D blobby cross of size *he*."""
     px = np.abs(p[..., 0]);  py = np.abs(p[..., 1])
     # IQ: pos = vec2(|px-py|, 1-px-py) / sqrt(2)
@@ -509,7 +512,7 @@ def sdBlobbyCross2D(p: _F, he: float) -> _F:
     return length(vec2(zx, zy)) * np.sign(zy)
 
 
-def sdTunnel2D(p: _F, wh: _F) -> _F:
+def sdTunnel2D(p: Points2D, wh: FloatArray) -> Distances:
     """2-D tunnel/arch; *wh* = ``(half_width, height)``."""
     px = np.abs(p[..., 0]);  py = -p[..., 1]   # IQ negates p.y
     qx = px - wh[0];  qy = py - wh[1]
@@ -521,7 +524,7 @@ def sdTunnel2D(p: _F, wh: _F) -> _F:
     return np.where(np.maximum(qx2, qy) < 0.0, -d, d)
 
 
-def sdStairs2D(p: _F, wh: _F, n: int) -> _F:
+def sdStairs2D(p: Points2D, wh: FloatArray, n: int) -> Distances:
     """2-D staircase; *wh* = ``(step_width, step_height)``, *n* steps."""
     ba  = wh * n
     px  = p[..., 0];  py = p[..., 1]
@@ -554,7 +557,7 @@ def sdStairs2D(p: _F, wh: _F, n: int) -> _F:
     return np.sqrt(np.maximum(d, 0.0)) * s
 
 
-def sdQuadraticCircle2D(p: _F) -> _F:
+def sdQuadraticCircle2D(p: Points2D) -> Distances:
     """2-D quadratic-circle approximation (unit-scale)."""
     px = np.abs(p[..., 0]);  py = np.abs(p[..., 1])
     # Swap so px >= py
@@ -579,7 +582,7 @@ def sdQuadraticCircle2D(p: _F) -> _F:
     return length(vec2(wx, wy)) * np.sign(a * a * 0.5 + b - 1.5)
 
 
-def sdHyperbola2D(p: _F, k: float, he: float) -> _F:
+def sdHyperbola2D(p: Points2D, k: float, he: float) -> Distances:
     """2-D hyperbola; *k* curvature, *he* half-height."""
     px = np.abs(p[..., 0]);  py = np.abs(p[..., 1])
     # IQ: rotate 45°  →  p = vec2(p.x-p.y, p.x+p.y)/sqrt(2)
@@ -605,7 +608,7 @@ def sdHyperbola2D(p: _F, k: float, he: float) -> _F:
     return np.where(px_r * py_r < k, d, -d)
 
 
-def sdNGon2D(p: _F, r: float, n: int) -> _F:
+def sdNGon2D(p: Points2D, r: float, n: int) -> Distances:
     """2-D regular N-gon; *r* circumradius, *n* sides."""
     an  = np.pi / n
     acs = vec2(np.cos(an), np.sin(an))
@@ -619,7 +622,7 @@ def sdNGon2D(p: _F, r: float, n: int) -> _F:
 # 2-D transform operator
 # ===========================================================================
 
-def opTx2D(p: _F, mat: _F, trans: _F, sdf_func: "_SDFFunc") -> _F:  # type: ignore[name-defined]
+def opTx2D(p: Points2D, mat: FloatArray, trans: FloatArray, sdf_func: "_SDFFunc") -> Distances:  # type: ignore[name-defined]
     """Apply 2-D rotation *mat* and translation *trans* to *sdf_func*."""
     p_transformed = np.dot(p, mat.T) - trans
     return sdf_func(p_transformed)
