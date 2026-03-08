@@ -12,7 +12,7 @@ from __future__ import annotations
 import numpy as np
 
 from .. import primitives as sdf
-from sdf3d.geometry import Sphere3D, Box3D, Union3D, Geometry3D
+from sdf3d.geometry import Sphere3D, Box3D, Union3D, SDF3D
 
 
 def RocketAssembly(
@@ -23,7 +23,7 @@ def RocketAssembly(
     fin_height: float = 0.18,
     fin_thickness: float = 0.03,
     n_fins: int = 4,
-) -> Geometry3D:
+) -> SDF3D:
     """Build a parametric rocket assembly.
 
     The rocket consists of:
@@ -51,7 +51,7 @@ def RocketAssembly(
 
     Returns
     -------
-    Geometry3D
+    SDF3D
         The composable geometry object.  To fill an AMReX MultiFab, call
         ``lib.from_geometry(RocketAssembly(...))`` yourself.
     """
@@ -72,13 +72,13 @@ def RocketAssembly(
         q  = np.stack([qx, qz, qy], axis=-1)
         return sdf.sdCappedCone(q, h_cone, 0.0, R)
 
-    nose_geom = Geometry3D(_nose_sdf)
+    nose_geom = SDF3D(_nose_sdf)
 
     # Fins
     fin_half    = [fin_span / 2.0, fin_thickness / 2.0, fin_height / 2.0]
     z_fin_center = -0.18
 
-    fins_geom: Geometry3D | None = None
+    fins_geom: SDF3D | None = None
     for i in range(n_fins):
         angle      = i * (2 * np.pi / n_fins)
         radial_dist = R + fin_half[0]
@@ -93,7 +93,7 @@ def RocketAssembly(
 
         fins_geom = single_fin if fins_geom is None else Union3D(fins_geom, single_fin)
 
-    rocket: Geometry3D = Union3D(body_geom, nose_geom)
+    rocket: SDF3D = Union3D(body_geom, nose_geom)
     if fins_geom is not None:
         rocket = Union3D(rocket, fins_geom)
 

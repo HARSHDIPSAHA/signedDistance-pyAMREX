@@ -1,7 +1,7 @@
 """2D AMReX SDF demo.
 
 Pipeline:
-    Geometry → SDFLibrary2D → MultiFab → write_single_level_plotfile
+    Geometry → SDFMultiFab2D → MultiFab → write_single_level_plotfile
     → VisIt (pseudocolor heatmap + zero-level contour) → PNG
 
 Run with:
@@ -67,7 +67,7 @@ except ImportError as exc:
     ) from exc
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-from sdf2d.amrex import SDFLibrary2D
+from sdf2d.amrex import SDFMultiFab2D
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -89,15 +89,16 @@ geom     = amr.Geometry(domain, real_box, 0, [0, 0])  # coord_sys=0 (Cartesian)
 ba       = amr.BoxArray(domain)
 ba.max_size(n // 2)                                    # 2×2 decomposition → 4 boxes
 dm       = amr.DistributionMapping(ba)
-lib      = SDFLibrary2D(geom, ba, dm)
+lib      = SDFMultiFab2D(geom, ba, dm)
 
 # ---------------------------------------------------------------------------
 # Build MultiFabs for each demo shape
 # ---------------------------------------------------------------------------
-mf_circle      = lib.circle((0, 0), 0.5)
-mf_box         = lib.box((0, 0), (0.4, 0.3))
-mf_rounded_box = lib.rounded_box((0, 0), (0.4, 0.3), 0.1)
-mf_hexagon     = lib.hexagon((0, 0), 0.4)
+from sdf2d import Circle2D, Box2D, RoundedBox2D, Hexagon2D
+mf_circle      = lib.from_geometry(Circle2D(0.5))
+mf_box         = lib.from_geometry(Box2D((0.4, 0.3)))
+mf_rounded_box = lib.from_geometry(RoundedBox2D((0.4, 0.3), 0.1))
+mf_hexagon     = lib.from_geometry(Hexagon2D(0.4))
 mf_union       = lib.union(mf_circle, mf_box)
 mf_subtract    = lib.subtract(mf_box, mf_circle)  # box with circle cut out
 

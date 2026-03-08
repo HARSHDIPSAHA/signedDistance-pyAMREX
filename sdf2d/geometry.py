@@ -20,10 +20,10 @@ _SDFFunc = Callable[[_Array], _Array]
 # Base class
 # ===========================================================================
 
-class Geometry2D:
+class SDF2D:
     """Base class for 2D signed-distance-function geometries.
 
-    A ``Geometry2D`` wraps a callable ``func(p) -> distances`` where *p* is
+    A ``SDF2D`` wraps a callable ``func(p) -> distances`` where *p* is
     a ``(..., 2)`` array of 2D points and the return value is a ``(...)``
     array of signed distances.
 
@@ -50,49 +50,49 @@ class Geometry2D:
     # Boolean operations
     # ------------------------------------------------------------------
 
-    def union(self, other: Geometry2D) -> Geometry2D:
+    def union(self, other: SDF2D) -> SDF2D:
         """Return the union (min) of this shape and *other*."""
-        return Geometry2D(lambda p: sdf.opUnion(self.sdf(p), other.sdf(p)))
+        return SDF2D(lambda p: sdf.opUnion(self.sdf(p), other.sdf(p)))
 
-    def subtract(self, other: Geometry2D) -> Geometry2D:
+    def subtract(self, other: SDF2D) -> SDF2D:
         """Subtract *other* from this shape."""
-        return Geometry2D(lambda p: sdf.opSubtraction(other.sdf(p), self.sdf(p)))
+        return SDF2D(lambda p: sdf.opSubtraction(other.sdf(p), self.sdf(p)))
 
-    def intersect(self, other: Geometry2D) -> Geometry2D:
+    def intersect(self, other: SDF2D) -> SDF2D:
         """Return the intersection (max) of this shape and *other*."""
-        return Geometry2D(lambda p: sdf.opIntersection(self.sdf(p), other.sdf(p)))
+        return SDF2D(lambda p: sdf.opIntersection(self.sdf(p), other.sdf(p)))
 
     # ------------------------------------------------------------------
     # Modifiers
     # ------------------------------------------------------------------
 
-    def round(self, rad: float) -> Geometry2D:
+    def round(self, rad: float) -> SDF2D:
         """Round the surface outward by *rad*."""
-        return Geometry2D(lambda p: sdf.opRound(p, self.sdf, rad))
+        return SDF2D(lambda p: sdf.opRound(p, self.sdf, rad))
 
-    def onion(self, thickness: float) -> Geometry2D:
+    def onion(self, thickness: float) -> SDF2D:
         """Turn the solid into a hollow shell of *thickness*."""
-        return Geometry2D(lambda p: sdf.opOnion(self.sdf(p), thickness))
+        return SDF2D(lambda p: sdf.opOnion(self.sdf(p), thickness))
 
     # ------------------------------------------------------------------
     # Transforms
     # ------------------------------------------------------------------
 
-    def translate(self, tx: float, ty: float) -> Geometry2D:
+    def translate(self, tx: float, ty: float) -> SDF2D:
         """Translate by ``(tx, ty)``."""
         t = np.array([tx, ty])
-        return Geometry2D(lambda p: self.sdf(p - t))
+        return SDF2D(lambda p: self.sdf(p - t))
 
-    def scale(self, s: float) -> Geometry2D:
+    def scale(self, s: float) -> SDF2D:
         """Uniformly scale by factor *s*."""
-        return Geometry2D(lambda p: sdf.opScale(p, s, self.sdf))
+        return SDF2D(lambda p: sdf.opScale(p, s, self.sdf))
 
-    def rotate(self, angle_rad: float) -> Geometry2D:
+    def rotate(self, angle_rad: float) -> SDF2D:
         """Rotate by *angle_rad* radians (counter-clockwise)."""
         c = np.cos(angle_rad)
         s = np.sin(angle_rad)
         rot = np.array([[c, -s], [s, c]])
-        return Geometry2D(lambda p: sdf.opTx2D(p, rot, np.zeros(2), self.sdf))
+        return SDF2D(lambda p: sdf.opTx2D(p, rot, np.zeros(2), self.sdf))
 
     # ------------------------------------------------------------------
     # Visualisation helpers
@@ -167,14 +167,14 @@ class Geometry2D:
 # Primitive shapes
 # ===========================================================================
 
-class Circle2D(Geometry2D):
+class Circle2D(SDF2D):
     """Circle centred at origin with given *radius*."""
 
     def __init__(self, radius: float) -> None:
         super().__init__(lambda p: sdf.sdCircle(p, radius))
 
 
-class Box2D(Geometry2D):
+class Box2D(SDF2D):
     """Axis-aligned rectangle with *half_size* ``(hx, hy)`` centred at origin."""
 
     def __init__(self, half_size: Sequence[float]) -> None:
@@ -182,7 +182,7 @@ class Box2D(Geometry2D):
         super().__init__(lambda p: sdf.sdBox2D(p, b))
 
 
-class RoundedBox2D(Geometry2D):
+class RoundedBox2D(SDF2D):
     """Axis-aligned rectangle with corner *radius* and *half_size* ``(hx, hy)``."""
 
     def __init__(self, half_size: Sequence[float], radius: float) -> None:
@@ -190,7 +190,7 @@ class RoundedBox2D(Geometry2D):
         super().__init__(lambda p: sdf.sdRoundedBox2D(p, b, radius))
 
 
-class OrientedBox2D(Geometry2D):
+class OrientedBox2D(SDF2D):
     """An oriented (rotated) box from *corner_a* to *corner_b* with *thickness*."""
 
     def __init__(
@@ -204,7 +204,7 @@ class OrientedBox2D(Geometry2D):
         super().__init__(lambda p: sdf.sdOrientedBox2D(p, a, b, thickness))
 
 
-class Segment2D(Geometry2D):
+class Segment2D(SDF2D):
     """Line segment from *point_a* to *point_b* (zero-width)."""
 
     def __init__(
@@ -215,7 +215,7 @@ class Segment2D(Geometry2D):
         super().__init__(lambda p: sdf.sdSegment2D(p, a, b))
 
 
-class Rhombus2D(Geometry2D):
+class Rhombus2D(SDF2D):
     """Rhombus (diamond) with *half_size* ``(hx, hy)``."""
 
     def __init__(self, half_size: Sequence[float]) -> None:
@@ -223,14 +223,14 @@ class Rhombus2D(Geometry2D):
         super().__init__(lambda p: sdf.sdRhombus2D(p, b))
 
 
-class Trapezoid2D(Geometry2D):
+class Trapezoid2D(SDF2D):
     """Isosceles trapezoid with base radii *r1*, *r2* and *height*."""
 
     def __init__(self, r1: float, r2: float, height: float) -> None:
         super().__init__(lambda p: sdf.sdTrapezoid2D(p, r1, r2, height))
 
 
-class Parallelogram2D(Geometry2D):
+class Parallelogram2D(SDF2D):
     """Parallelogram with *width*, *height*, and horizontal *skew*."""
 
     def __init__(self, width: float, height: float, skew: float) -> None:
@@ -241,14 +241,14 @@ class Parallelogram2D(Geometry2D):
 # Triangles
 # ===========================================================================
 
-class EquilateralTriangle2D(Geometry2D):
+class EquilateralTriangle2D(SDF2D):
     """Equilateral triangle with circumradius *radius*."""
 
     def __init__(self, radius: float) -> None:
         super().__init__(lambda p: sdf.sdEquilateralTriangle2D(p, radius))
 
 
-class TriangleIsosceles2D(Geometry2D):
+class TriangleIsosceles2D(SDF2D):
     """Isosceles triangle with half-base *width* and *height*."""
 
     def __init__(self, width: float, height: float) -> None:
@@ -256,7 +256,7 @@ class TriangleIsosceles2D(Geometry2D):
         super().__init__(lambda p: sdf.sdTriangleIsosceles2D(p, q))
 
 
-class Triangle2D(Geometry2D):
+class Triangle2D(SDF2D):
     """Arbitrary triangle from three 2-D vertices."""
 
     def __init__(
@@ -275,7 +275,7 @@ class Triangle2D(Geometry2D):
 # Capsules
 # ===========================================================================
 
-class UnevenCapsule2D(Geometry2D):
+class UnevenCapsule2D(SDF2D):
     """Capsule with different radii *r1* (bottom) and *r2* (top), and *height*."""
 
     def __init__(self, r1: float, r2: float, height: float) -> None:
@@ -286,28 +286,28 @@ class UnevenCapsule2D(Geometry2D):
 # Regular polygons
 # ===========================================================================
 
-class Pentagon2D(Geometry2D):
+class Pentagon2D(SDF2D):
     """Regular pentagon with circumradius *radius*."""
 
     def __init__(self, radius: float) -> None:
         super().__init__(lambda p: sdf.sdPentagon2D(p, radius))
 
 
-class Hexagon2D(Geometry2D):
+class Hexagon2D(SDF2D):
     """Regular hexagon with circumradius *radius*."""
 
     def __init__(self, radius: float) -> None:
         super().__init__(lambda p: sdf.sdHexagon2D(p, radius))
 
 
-class Octagon2D(Geometry2D):
+class Octagon2D(SDF2D):
     """Regular octagon with circumradius *radius*."""
 
     def __init__(self, radius: float) -> None:
         super().__init__(lambda p: sdf.sdOctagon2D(p, radius))
 
 
-class NGon2D(Geometry2D):
+class NGon2D(SDF2D):
     """Regular N-sided polygon with *n_sides* and circumradius *radius*."""
 
     def __init__(self, radius: float, n_sides: int) -> None:
@@ -318,14 +318,14 @@ class NGon2D(Geometry2D):
 # Stars
 # ===========================================================================
 
-class Hexagram2D(Geometry2D):
+class Hexagram2D(SDF2D):
     """6-pointed star (Star of David) with *radius*."""
 
     def __init__(self, radius: float) -> None:
         super().__init__(lambda p: sdf.sdHexagram2D(p, radius))
 
 
-class Star2D(Geometry2D):
+class Star2D(SDF2D):
     """N-pointed star with *radius* and *n_points* points.
 
     Parameters
@@ -344,7 +344,7 @@ class Star2D(Geometry2D):
 # Arcs and sectors
 # ===========================================================================
 
-class Pie2D(Geometry2D):
+class Pie2D(SDF2D):
     """Circular pie/sector.
 
     Parameters
@@ -360,14 +360,14 @@ class Pie2D(Geometry2D):
         super().__init__(lambda p: sdf.sdPie2D(p, c, radius))
 
 
-class CutDisk2D(Geometry2D):
+class CutDisk2D(SDF2D):
     """Circle with a straight cut at height *cut_height*."""
 
     def __init__(self, radius: float, cut_height: float) -> None:
         super().__init__(lambda p: sdf.sdCutDisk2D(p, radius, cut_height))
 
 
-class Arc2D(Geometry2D):
+class Arc2D(SDF2D):
     """Arc (bent line) with given *angle_sc*, outer *radius*, and *thickness*.
 
     Parameters
@@ -383,14 +383,14 @@ class Arc2D(Geometry2D):
         super().__init__(lambda p: sdf.sdArc2D(p, sc, radius, thickness))
 
 
-class Ring2D(Geometry2D):
+class Ring2D(SDF2D):
     """Annulus (ring) between *inner_radius* and *outer_radius*."""
 
     def __init__(self, inner_radius: float, outer_radius: float) -> None:
         super().__init__(lambda p: sdf.sdRing2D(p, inner_radius, outer_radius))
 
 
-class Horseshoe2D(Geometry2D):
+class Horseshoe2D(SDF2D):
     """Horseshoe shape.
 
     Parameters
@@ -418,7 +418,7 @@ class Horseshoe2D(Geometry2D):
 # Special shapes
 # ===========================================================================
 
-class Vesica2D(Geometry2D):
+class Vesica2D(SDF2D):
     """Vesica piscis (lens/eye shape): intersection of two circles.
 
     Parameters
@@ -433,7 +433,7 @@ class Vesica2D(Geometry2D):
         super().__init__(lambda p: sdf.sdVesica2D(p, radius, distance))
 
 
-class Moon2D(Geometry2D):
+class Moon2D(SDF2D):
     """Crescent moon shape.
 
     Parameters
@@ -450,28 +450,28 @@ class Moon2D(Geometry2D):
         super().__init__(lambda p: sdf.sdMoon2D(p, distance, radius_a, radius_b))
 
 
-class RoundedCross2D(Geometry2D):
+class RoundedCross2D(SDF2D):
     """Rounded cross of *size*."""
 
     def __init__(self, size: float) -> None:
         super().__init__(lambda p: sdf.sdRoundedCross2D(p, size))
 
 
-class Egg2D(Geometry2D):
+class Egg2D(SDF2D):
     """Egg shape with two radii *radius_a* and *radius_b*."""
 
     def __init__(self, radius_a: float, radius_b: float) -> None:
         super().__init__(lambda p: sdf.sdEgg2D(p, radius_a, radius_b))
 
 
-class Heart2D(Geometry2D):
+class Heart2D(SDF2D):
     """Heart shape (unit-scale, centred at origin)."""
 
     def __init__(self) -> None:
         super().__init__(lambda p: sdf.sdHeart2D(p))
 
 
-class Cross2D(Geometry2D):
+class Cross2D(SDF2D):
     """Symmetric plus-sign cross.
 
     Parameters
@@ -487,7 +487,7 @@ class Cross2D(Geometry2D):
         super().__init__(lambda p: sdf.sdCross2D(p, b, rounding))
 
 
-class RoundedX2D(Geometry2D):
+class RoundedX2D(SDF2D):
     """X-shape (cross at 45°) with *width* and corner *rounding*."""
 
     def __init__(self, width: float, rounding: float) -> None:
@@ -498,7 +498,7 @@ class RoundedX2D(Geometry2D):
 # Complex / parametric shapes
 # ===========================================================================
 
-class Polygon2D(Geometry2D):
+class Polygon2D(SDF2D):
     """Arbitrary convex or concave polygon from N 2-D *vertices*."""
 
     def __init__(self, vertices: Sequence[Sequence[float]]) -> None:
@@ -506,7 +506,7 @@ class Polygon2D(Geometry2D):
         super().__init__(lambda p: sdf.sdPolygon2D(p, v))
 
 
-class Ellipse2D(Geometry2D):
+class Ellipse2D(SDF2D):
     """Ellipse with semi-axes *semi_axes* ``(a, b)``."""
 
     def __init__(self, semi_axes: Sequence[float]) -> None:
@@ -514,21 +514,21 @@ class Ellipse2D(Geometry2D):
         super().__init__(lambda p: sdf.sdEllipse2D(p, ab))
 
 
-class Parabola2D(Geometry2D):
+class Parabola2D(SDF2D):
     """Parabola ``y = k·x²`` with *curvature* k."""
 
     def __init__(self, curvature: float) -> None:
         super().__init__(lambda p: sdf.sdParabola2D(p, curvature))
 
 
-class ParabolaSegment2D(Geometry2D):
+class ParabolaSegment2D(SDF2D):
     """Bounded parabolic segment with half-*width* and *height*."""
 
     def __init__(self, width: float, height: float) -> None:
         super().__init__(lambda p: sdf.sdParabolaSegment2D(p, width, height))
 
 
-class Bezier2D(Geometry2D):
+class Bezier2D(SDF2D):
     """Quadratic Bézier curve from control points *p0*, *p1* (control), *p2*."""
 
     def __init__(
@@ -543,14 +543,14 @@ class Bezier2D(Geometry2D):
         super().__init__(lambda p: sdf.sdBezier2D(p, A, B, C))
 
 
-class BlobbyCross2D(Geometry2D):
+class BlobbyCross2D(SDF2D):
     """Blobby cross shape of *size*."""
 
     def __init__(self, size: float) -> None:
         super().__init__(lambda p: sdf.sdBlobbyCross2D(p, size))
 
 
-class Tunnel2D(Geometry2D):
+class Tunnel2D(SDF2D):
     """Tunnel/arch with *size_vec2* ``(half_width, height)``."""
 
     def __init__(self, size_vec2: Sequence[float]) -> None:
@@ -558,7 +558,7 @@ class Tunnel2D(Geometry2D):
         super().__init__(lambda p: sdf.sdTunnel2D(p, wh))
 
 
-class Stairs2D(Geometry2D):
+class Stairs2D(SDF2D):
     """Staircase with *step_size* ``(width, height)`` and *num_steps* steps."""
 
     def __init__(
@@ -568,14 +568,14 @@ class Stairs2D(Geometry2D):
         super().__init__(lambda p: sdf.sdStairs2D(p, wh, num_steps))
 
 
-class QuadraticCircle2D(Geometry2D):
+class QuadraticCircle2D(SDF2D):
     """Quadratic-circle approximation (unit-scale, centred at origin)."""
 
     def __init__(self) -> None:
         super().__init__(lambda p: sdf.sdQuadraticCircle2D(p))
 
 
-class Hyperbola2D(Geometry2D):
+class Hyperbola2D(SDF2D):
     """Hyperbola with *curvature* and half-*height*."""
 
     def __init__(self, curvature: float, height: float) -> None:
@@ -586,10 +586,10 @@ class Hyperbola2D(Geometry2D):
 # Boolean operation classes
 # ===========================================================================
 
-class Union2D(Geometry2D):
+class Union2D(SDF2D):
     """Union of two or more 2-D geometries (minimum SDF)."""
 
-    def __init__(self, *geoms: Geometry2D) -> None:
+    def __init__(self, *geoms: SDF2D) -> None:
         def _sdf(p: _Array) -> _Array:
             d = geoms[0].sdf(p)
             for g in geoms[1:]:
@@ -599,10 +599,10 @@ class Union2D(Geometry2D):
         super().__init__(_sdf)
 
 
-class Intersection2D(Geometry2D):
+class Intersection2D(SDF2D):
     """Intersection of two or more 2-D geometries (maximum SDF)."""
 
-    def __init__(self, *geoms: Geometry2D) -> None:
+    def __init__(self, *geoms: SDF2D) -> None:
         def _sdf(p: _Array) -> _Array:
             d = geoms[0].sdf(p)
             for g in geoms[1:]:
@@ -612,10 +612,10 @@ class Intersection2D(Geometry2D):
         super().__init__(_sdf)
 
 
-class Subtraction2D(Geometry2D):
+class Subtraction2D(SDF2D):
     """Subtract *cutter* from *base*."""
 
-    def __init__(self, base: Geometry2D, cutter: Geometry2D) -> None:
+    def __init__(self, base: SDF2D, cutter: SDF2D) -> None:
         super().__init__(
             lambda p: sdf.opSubtraction(cutter.sdf(p), base.sdf(p))
         )

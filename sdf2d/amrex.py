@@ -14,7 +14,7 @@ from . import primitives as sdf
 
 if TYPE_CHECKING:
     import amrex.space2d as amr  # noqa: F401 — type-checker only
-    from .geometry import Geometry2D
+    from .geometry import SDF2D
 
 _Array = npt.NDArray[np.floating]
 
@@ -54,8 +54,24 @@ def _copy_mf_like(src: "amr.MultiFab", ba: "amr.BoxArray", dm: "amr.Distribution
 # Public class
 # ---------------------------------------------------------------------------
 
-class SDFLibrary2D:
-    """Build 2-D SDF fields directly in AMReX MultiFabs.
+class SDFMultiFab2D:
+    """A bound factory that fills AMReX MultiFabs with 2-D SDF values.
+
+    Construct it once with the AMReX grid layout (domain, box decomposition,
+    MPI distribution); all subsequent calls reuse that layout automatically::
+
+        lib = SDFMultiFab2D(geom, ba, dm)   # holds the grid layout
+        mf  = lib.from_geometry(Circle2D(0.3))  # creates + fills a MultiFab
+
+    Think of it like a database connection object: open it once, then call
+    methods on it as many times as you need.  ``from_geometry`` is the main
+    entry point; it is a thin wrapper over the two lower-level primitives::
+
+        mf = lib.create_multifab()          # allocate empty MultiFab
+        lib.fill_multifab(mf, geom.sdf)     # write SDF values into it
+
+    Call :meth:`fill_multifab` directly when you want to reuse an existing
+    MultiFab or supply a raw SDF callable instead of a geometry object.
 
     Parameters
     ----------
@@ -65,10 +81,6 @@ class SDFLibrary2D:
         ``amr.BoxArray`` describing the domain decomposition.
     dm:
         ``amr.DistributionMapping`` assigning boxes to MPI ranks.
-
-    Implemented primitives
-    ----------------------
-    :meth:`circle`, :meth:`box`, :meth:`rounded_box`, :meth:`hexagon`
 
     Implemented operations
     ----------------------
@@ -90,7 +102,7 @@ class SDFLibrary2D:
     # MultiFab factory
     # ------------------------------------------------------------------
 
-    def create_field(self) -> "amr.MultiFab":
+    def create_multifab(self) -> "amr.MultiFab":
         """Return an uninitialised single-component MultiFab with no ghost cells."""
         import amrex.space2d as amr
         return amr.MultiFab(self.ba, self.dm, 1, 0)
@@ -99,73 +111,20 @@ class SDFLibrary2D:
     # Geometry → MultiFab
     # ------------------------------------------------------------------
 
-    def from_geometry(self, geometry: "Geometry2D") -> "amr.MultiFab":
-        """Evaluate *geometry* on the AMReX grid and return a MultiFab."""
-        mf = self.create_field()
-        self._fill_multifab(mf, geometry.sdf)
-        return mf
+    def from_geometry(self, geometry: "SDF2D") -> "amr.MultiFab":
+        """Evaluate *geometry* on the AMReX grid and return a MultiFab.
 
-    # ------------------------------------------------------------------
-    # Primitive constructors
-    # ------------------------------------------------------------------
+        This is a thin convenience wrapper — equivalent to::
 
-    def circle(
-        self, center: Tuple[float, float], radius: float
-    ) -> "amr.MultiFab":
-        """Return a MultiFab for a circle at *center* with *radius*."""
-        c = np.array(center, dtype=float)
+            mf = lib.create_multifab()
+            lib.fill_multifab(mf, geometry.sdf)
 
-        def _sdf(p: _Array) -> _Array:
-            return sdf.sdCircle(p - c, radius)
-
-        mf = self.create_field()
-        self._fill_multifab(mf, _sdf)
-        return mf
-
-    def box(
-        self,
-        center: Tuple[float, float],
-        half_size: Tuple[float, float],
-    ) -> "amr.MultiFab":
-        """Return a MultiFab for an axis-aligned box at *center* with *half_size*."""
-        c = np.array(center, dtype=float)
-        h = np.array(half_size, dtype=float)
-
-        def _sdf(p: _Array) -> _Array:
-            return sdf.sdBox2D(p - c, h)
-
-        mf = self.create_field()
-        self._fill_multifab(mf, _sdf)
-        return mf
-
-    def rounded_box(
-        self,
-        center: Tuple[float, float],
-        half_size: Tuple[float, float],
-        radius: float,
-    ) -> "amr.MultiFab":
-        """Return a MultiFab for a rounded box."""
-        c = np.array(center, dtype=float)
-        h = np.array(half_size, dtype=float)
-
-        def _sdf(p: _Array) -> _Array:
-            return sdf.sdRoundedBox2D(p - c, h, radius)
-
-        mf = self.create_field()
-        self._fill_multifab(mf, _sdf)
-        return mf
-
-    def hexagon(
-        self, center: Tuple[float, float], radius: float
-    ) -> "amr.MultiFab":
-        """Return a MultiFab for a regular hexagon at *center*."""
-        c = np.array(center, dtype=float)
-
-        def _sdf(p: _Array) -> _Array:
-            return sdf.sdHexagon2D(p - c, radius)
-
-        mf = self.create_field()
-        self._fill_multifab(mf, _sdf)
+        Call :meth:`fill_multifab` directly when you need to reuse an
+        existing MultiFab or supply a raw SDF callable instead of a geometry
+        object.
+        """
+        mf = self.create_multifab()
+        self.fill_multifab(mf, geometry.sdf)
         return mf
 
     # ------------------------------------------------------------------
@@ -214,10 +173,10 @@ class SDFLibrary2D:
         return out
 
     # ------------------------------------------------------------------
-    # Internal grid fill
+    # Grid fill
     # ------------------------------------------------------------------
 
-    def _fill_multifab(
+    def fill_multifab(
         self,
         mf: "amr.MultiFab",
         sdf_func: "_SDFFunc",  # type: ignore[name-defined]

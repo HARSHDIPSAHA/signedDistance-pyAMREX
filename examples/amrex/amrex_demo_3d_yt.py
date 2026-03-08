@@ -2,7 +2,7 @@
 
 Demonstrates the full AMReX-native visualization pipeline for 3D shapes:
 
-    Geometry → SDFLibrary3D → MultiFab → write_single_level_plotfile
+    Geometry → SDFMultiFab3D → MultiFab → write_single_level_plotfile
     → yt (SurfaceSource or marching-cubes fallback) → PNG
 
 Run with:
@@ -32,9 +32,9 @@ except ImportError as exc:
 sys.path.insert(0, os.path.dirname(__file__))
 from render_surface_from_plotfile import render_surface
 
-# pySdf root so we can import SDFLibrary3D
+# pySdf root so we can import SDFMultiFab3D
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-from sdf3d.amrex import SDFLibrary3D
+from sdf3d.amrex import SDFMultiFab3D
 
 # ---------------------------------------------------------------------------
 # AMReX initialisation
@@ -55,14 +55,15 @@ ba = amr.BoxArray(domain)
 ba.max_size(n // 2)
 dm = amr.DistributionMapping(ba)
 
-lib = SDFLibrary3D(geom, ba, dm)
+lib = SDFMultiFab3D(geom, ba, dm)
 
 # ---------------------------------------------------------------------------
 # Build MultiFabs for each shape
 # ---------------------------------------------------------------------------
-mf_sphere    = lib.sphere((0, 0, 0), 0.3)
-mf_box       = lib.box((0, 0, 0), (0.25, 0.2, 0.15))
-mf_round_box = lib.round_box((0, 0, 0), (0.25, 0.2, 0.15), 0.05)
+from sdf3d import Sphere3D, Box3D, RoundBox3D
+mf_sphere    = lib.from_geometry(Sphere3D(0.3))
+mf_box       = lib.from_geometry(Box3D((0.25, 0.2, 0.15)))
+mf_round_box = lib.from_geometry(RoundBox3D((0.25, 0.2, 0.15), 0.05))
 mf_union     = lib.union(mf_sphere, mf_box)
 mf_subtract  = lib.subtract(mf_box, mf_sphere)  # box with sphere subtracted
 

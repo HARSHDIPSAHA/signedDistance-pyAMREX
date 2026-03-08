@@ -15,7 +15,7 @@ import pytest
 
 from stl2sdf import stl_to_geometry
 from stl2sdf._math import _stl_to_triangles
-from sdf3d.geometry import Geometry3D
+from sdf3d.geometry import SDF3D
 from sdf3d import Sphere3D
 
 try:
@@ -118,7 +118,7 @@ class TestStlToGeometry:
     def test_returns_geometry3d(self, tmp_path):
         stl = tmp_path / "box.stl"
         stl.write_bytes(_write_binary_stl(_make_box_triangles()))
-        assert isinstance(stl_to_geometry(stl), Geometry3D)
+        assert isinstance(stl_to_geometry(stl), SDF3D)
 
     def test_inside_negative(self, tmp_path):
         stl = tmp_path / "box.stl"
@@ -208,5 +208,5 @@ class TestStlToGeometry:
         if not stl_path.exists():
             pytest.skip(f"{stem}.stl not present")
         geom = stl_to_geometry(stl_path)
-        assert isinstance(geom, Geometry3D)
+        assert isinstance(geom, SDF3D)
         assert geom.sdf(np.array([[0., 0., 0.]])).shape == (1,)

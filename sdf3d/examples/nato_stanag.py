@@ -12,14 +12,14 @@ from __future__ import annotations
 import numpy as np
 
 from .. import primitives as sdf
-from sdf3d.geometry import Cylinder3D, Box3D, Intersection3D, Union3D, Geometry3D
+from sdf3d.geometry import Cylinder3D, Box3D, Intersection3D, Union3D, SDF3D
 
 
 def NATOFragment(
     diameter: float = 14.30e-3,
     L_over_D: float = 1.09,
     cone_angle_deg: float = 20.0,
-) -> Geometry3D:
+) -> SDF3D:
     """Build a NATO STANAG-4496 fragment geometry.
 
     The fragment is a cylinder capped with a cone (ogive nose).
@@ -36,7 +36,7 @@ def NATOFragment(
 
     Returns
     -------
-    Geometry3D
+    SDF3D
         The composable geometry object.  To fill an AMReX MultiFab, call
         ``lib.from_geometry(NATOFragment(...))`` yourself.
     """
@@ -59,7 +59,7 @@ def NATOFragment(
         return sdf.sdCappedCone(p, cone_height, 0.0, fragment_radius)
 
     cone_geom = (
-        Geometry3D(_sharp_cone_sdf)
+        SDF3D(_sharp_cone_sdf)
         .rotate_x(np.pi / 2)
         .translate(0.0, 0.0, cylinder_height + cone_height)
     )

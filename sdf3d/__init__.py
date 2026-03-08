@@ -11,7 +11,7 @@ Implemented features
 - Boolean operations: Union, Intersection, Subtraction
 - Transforms: translate, rotate_x/y/z, scale, elongate, round, onion
 - Grid sampling: :func:`sample_levelset_3d`
-- AMReX MultiFab output: :class:`SDFLibrary3D` (requires pyAMReX 3-D build)
+- AMReX MultiFab output: :class:`SDFMultiFab3D` (requires pyAMReX 3-D build)
 - Example assemblies: :class:`~sdf3d.examples.NATOFragment`,
   :class:`~sdf3d.examples.RocketAssembly`
 
@@ -34,17 +34,17 @@ NumPy mode (no AMReX required)::
 AMReX mode::
 
     import amrex.space3d as amr
-    from sdf3d import SDFLibrary3D
+    from sdf3d import SDFMultiFab3D
 
     amr.initialize([])
     # ... set up geom, ba, dm ...
-    lib      = SDFLibrary3D(geom, ba, dm)
-    levelset = lib.sphere(center=(0.0, 0.0, 0.0), radius=0.3)
+    lib      = SDFMultiFab3D(geom, ba, dm)
+    levelset = lib.from_geometry(Sphere3D(0.3))
     amr.finalize()
 """
 
 from .geometry import (
-    Geometry3D,
+    SDF3D,
     Sphere3D,
     Box3D,
     RoundBox3D,
@@ -57,14 +57,14 @@ from .geometry import (
     save_plotly_html_grid,
 )
 from .grid import sample_levelset_3d, save_npy
-from .amrex import SDFLibrary3D
+from .amrex import SDFMultiFab3D
 from .examples import NATOFragment, RocketAssembly
 
 __version__ = "0.2.0"
 
 __all__ = [
     # Base
-    "Geometry3D",
+    "SDF3D",
 
     # Primitives
     "Sphere3D",
@@ -84,7 +84,7 @@ __all__ = [
     "save_npy",
 
     # AMReX integration
-    "SDFLibrary3D",
+    "SDFMultiFab3D",
 
     # Complex assemblies
     "NATOFragment",

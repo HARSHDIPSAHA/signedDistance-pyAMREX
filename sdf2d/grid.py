@@ -8,7 +8,7 @@ from typing import Tuple
 import numpy as np
 import numpy.typing as npt
 
-from .geometry import Geometry2D
+from .geometry import SDF2D
 
 _Array = npt.NDArray[np.floating]
 _Bounds2D = Tuple[Tuple[float, float], Tuple[float, float]]
@@ -16,7 +16,7 @@ _Resolution2D = Tuple[int, int]
 
 
 def sample_levelset_2d(
-    geom: Geometry2D,
+    geom: SDF2D,
     bounds: _Bounds2D,
     resolution: _Resolution2D,
 ) -> _Array:
@@ -25,7 +25,7 @@ def sample_levelset_2d(
     Parameters
     ----------
     geom:
-        A 2-D geometry whose ``sdf()`` method accepts ``(..., 2)`` arrays.
+        A :class:`SDF2D` geometry whose ``sdf()`` method accepts ``(..., 2)`` arrays.
     bounds:
         ``((x0, x1), (y0, y1))`` physical extents of the domain.
     resolution:

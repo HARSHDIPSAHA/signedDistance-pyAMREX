@@ -2,7 +2,7 @@
 
 Demonstrates the full AMReX-native visualization pipeline for 2D shapes:
 
-    Geometry → SDFLibrary2D → MultiFab → write_single_level_plotfile
+    Geometry → SDFMultiFab2D → MultiFab → write_single_level_plotfile
     → yt.load → SlicePlot → PNG
 
 Run with:
@@ -33,9 +33,9 @@ try:
 except ImportError as exc:
     raise SystemExit("yt not found. Install via: pip install yt") from exc
 
-# pySdf root on the path so we can import SDFLibrary2D
+# pySdf root on the path so we can import SDFMultiFab2D
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-from sdf2d.amrex import SDFLibrary2D
+from sdf2d.amrex import SDFMultiFab2D
 
 # ---------------------------------------------------------------------------
 # AMReX initialisation
@@ -55,15 +55,16 @@ ba = amr.BoxArray(domain)
 ba.max_size(n // 2)
 dm = amr.DistributionMapping(ba)
 
-lib = SDFLibrary2D(geom, ba, dm)
+lib = SDFMultiFab2D(geom, ba, dm)
 
 # ---------------------------------------------------------------------------
 # Build MultiFabs for each shape
 # ---------------------------------------------------------------------------
-mf_circle      = lib.circle((0, 0), 0.5)
-mf_box         = lib.box((0, 0), (0.4, 0.3))
-mf_rounded_box = lib.rounded_box((0, 0), (0.4, 0.3), 0.1)
-mf_hexagon     = lib.hexagon((0, 0), 0.4)
+from sdf2d import Circle2D, Box2D, RoundedBox2D, Hexagon2D
+mf_circle      = lib.from_geometry(Circle2D(0.5))
+mf_box         = lib.from_geometry(Box2D((0.4, 0.3)))
+mf_rounded_box = lib.from_geometry(RoundedBox2D((0.4, 0.3), 0.1))
+mf_hexagon     = lib.from_geometry(Hexagon2D(0.4))
 mf_union       = lib.union(mf_circle, mf_box)
 mf_subtract    = lib.subtract(mf_box, mf_circle)  # box with circle subtracted
 

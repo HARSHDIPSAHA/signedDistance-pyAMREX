@@ -8,7 +8,7 @@ from typing import Tuple
 import numpy as np
 import numpy.typing as npt
 
-from .geometry import Geometry3D
+from .geometry import SDF3D
 
 _Array = npt.NDArray[np.floating]
 _Bounds3D = Tuple[Tuple[float, float], Tuple[float, float], Tuple[float, float]]
@@ -16,7 +16,7 @@ _Resolution3D = Tuple[int, int, int]
 
 
 def sample_levelset_3d(
-    geom: Geometry3D,
+    geom: SDF3D,
     bounds: _Bounds3D,
     resolution: _Resolution3D,
 ) -> _Array:
@@ -25,7 +25,7 @@ def sample_levelset_3d(
     Parameters
     ----------
     geom:
-        A 3-D geometry whose ``sdf()`` method accepts ``(..., 3)`` arrays.
+        A :class:`SDF3D` geometry whose ``sdf()`` method accepts ``(..., 3)`` arrays.
     bounds:
         ``((x0, x1), (y0, y1), (z0, z1))`` physical extents of the domain.
     resolution:

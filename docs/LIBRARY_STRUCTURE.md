@@ -20,7 +20,7 @@ A 2D and 3D Signed Distance Function library with STL mesh conversion and option
 - `primitives.py` — NumPy implementations of all ~50 2D SDF formulas (`sdCircle`, `sdBox2D`, …) and `opTx2D`. Re-exports everything from `_sdf_common`. No AMReX dependency.
 - `geometry.py` — All 2D geometry classes: `Circle2D`, `Box2D`, `Hexagon2D`, … plus `Union2D`, `Intersection2D`, `Subtraction2D`. Transforms: `translate`, `rotate`, `scale`, `round`, `onion`. Every class wraps a lambda over `primitives` and exposes `sdf(p)`.
 - `grid.py` — `sample_levelset_2d(geom, bounds, resolution)` → `ndarray` of shape `(ny, nx)`. Also provides `save_npy`.
-- `amrex.py` — `SDFLibrary2D` for AMReX `MultiFab` output. Requires `amrex.space2d`. Import-guarded so the module loads without AMReX.
+- `amrex.py` — `SDFMultiFab2D`: a bound factory for AMReX `MultiFab` output. Construct once with `(geom, ba, dm)`; call `from_geometry(shape)` to create + fill a MultiFab. Requires `amrex.space2d`. Import-guarded so the module loads without AMReX.
 - `__init__.py` — Re-exports all public symbols.
 
 ---
@@ -30,7 +30,7 @@ A 2D and 3D Signed Distance Function library with STL mesh conversion and option
 - `primitives.py` — NumPy implementations of all ~30 3D SDF formulas (`sdSphere`, `sdBox`, …), smooth boolean ops (`opSmoothUnion`, …), and space-warps (`opElongate`, `opRevolution`, `opExtrusion`, `opTwist`, …). Re-exports everything from `_sdf_common`. No AMReX dependency.
 - `geometry.py` — All 3D geometry classes: `Sphere3D`, `Box3D`, `RoundBox3D`, `Cylinder3D`, `ConeExact3D`, `Torus3D`, and `Union3D` / `Intersection3D` / `Subtraction3D`. Transforms: `translate`, `rotate_x/y/z`, `scale`, `elongate`, `round`, `onion`.
 - `grid.py` — `sample_levelset_3d(geom, bounds, resolution)` → `ndarray` of shape `(nz, ny, nx)`. Also provides `save_npy`.
-- `amrex.py` — `SDFLibrary3D` for AMReX `MultiFab` output. Requires `amrex.space3d`. Import-guarded so the module loads without AMReX.
+- `amrex.py` — `SDFMultiFab3D`: a bound factory for AMReX `MultiFab` output. Construct once with `(geom, ba, dm)`; call `from_geometry(shape)` to create + fill a MultiFab. Requires `amrex.space3d`. Import-guarded so the module loads without AMReX.
 - `examples/` — High-level geometry assemblies:
   - `nato_stanag.py` — `NATOFragment(lib, …)`: NATO STANAG fragmentation cylinder with conical nose.
   - `rocket_assembly.py` — `RocketAssembly(lib, …)`: multi-part rocket with body, nose, and fins.
@@ -47,7 +47,7 @@ Requires a **watertight** (closed, 2-manifold) mesh for correct sign determinati
   - `_stl_to_triangles(path)` → `(F, 3, 3)` float64 — binary + ASCII loader
   - `_triangles_to_sdf(points, triangles)` → `(N,)` — Ericson closest-point + Möller–Trumbore sign
 - `geometry.py` — Public API:
-  - `stl_to_geometry(path, *, ray_dir=None)` → `Geometry3D` — load STL and return a composable geometry object
+  - `stl_to_geometry(path, *, ray_dir=None)` → `SDF3D` — load STL and return a composable geometry object
 - `__init__.py` — Re-exports `stl_to_geometry`.
 
 **Algorithms:**
@@ -70,7 +70,7 @@ All tests pass with `pytest` and require only `numpy`. AMReX is not needed.
 | `test_sdf3d_grid.py` | `sample_levelset_3d` shape/sign, `save_npy` round-trip |
 | `test_complex.py` | `NATOFragment` and `RocketAssembly` (mock lib, no AMReX) |
 | `test_stl2sdf.py` | `_stl_to_triangles` (binary + ASCII), `_triangles_to_sdf` (7 Voronoi regions, ray casting, sign), `stl_to_geometry` — all synthetic, no downloads |
-| `test_amrex.py` | `SDFLibrary2D` and `SDFLibrary3D` — **skipped automatically without pyAMReX** |
+| `test_amrex.py` | `SDFMultiFab2D` and `SDFMultiFab3D` — **skipped automatically without pyAMReX** |
 
 ```bash
 uv run pytest tests/ -v
@@ -105,7 +105,7 @@ User parameters          STL file
       ↓                     ↓
 Geometry classes      stl2sdf.stl_to_geometry
 (sdf2d / sdf3d)             ↓
-      └──────── Geometry3D ─┘
+      └──────── SDF3D ───────┘
                     ↓
             SDF evaluation
             (primitives.py)
@@ -116,4 +116,4 @@ Geometry classes      stl2sdf.stl_to_geometry
 ```
 
 - **NumPy path** (no AMReX): `sample_levelset_2d` / `sample_levelset_3d` → `np.ndarray`
-- **AMReX path**: `SDFLibrary2D` / `SDFLibrary3D` → `amr.MultiFab`
+- **AMReX path**: `SDFMultiFab2D` / `SDFMultiFab3D` (bound factories) → `amr.MultiFab`

@@ -5,7 +5,7 @@ import numpy.testing as npt
 import pytest
 
 from sdf3d import (
-    Geometry3D,
+    SDF3D,
     Sphere3D, Box3D, RoundBox3D, Cylinder3D, ConeExact3D, Torus3D,
     Union3D, Intersection3D, Subtraction3D,
 )
@@ -29,7 +29,7 @@ def _grid(n: int = 8) -> np.ndarray:
 # Base class
 # ===========================================================================
 
-class TestGeometry3D:
+class TestSDF3D:
     def test_translate_moves_origin(self):
         s = Sphere3D(0.3)
         moved = s.translate(0.5, 0.0, 0.0)

@@ -20,9 +20,9 @@ class TestNATOFragment:
 
     def test_returns_geometry(self):
         from sdf3d.examples import NATOFragment
-        from sdf3d.geometry import Geometry3D
+        from sdf3d.geometry import SDF3D
         result = NATOFragment(diameter=14.30e-3, L_over_D=1.09)
-        assert isinstance(result, Geometry3D)
+        assert isinstance(result, SDF3D)
 
     def test_geometry_has_sdf(self):
         from sdf3d.examples import NATOFragment
@@ -63,9 +63,9 @@ class TestRocketAssembly:
 
     def test_returns_geometry(self):
         from sdf3d.examples import RocketAssembly
-        from sdf3d.geometry import Geometry3D
+        from sdf3d.geometry import SDF3D
         result = RocketAssembly()
-        assert isinstance(result, Geometry3D)
+        assert isinstance(result, SDF3D)
 
     def test_geometry_has_sdf(self):
         from sdf3d.examples import RocketAssembly

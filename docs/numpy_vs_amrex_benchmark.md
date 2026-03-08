@@ -6,7 +6,7 @@
 `(nz, ny, nx, 3)` covering the entire domain, evaluates the SDF on it, and returns a
 single `(nz, ny, nx)` array. Both arrays must fit in RAM simultaneously.
 
-**AMReX path (`SDFLibrary3D.from_geometry`)** iterates over MultiFab patch boxes via
+**AMReX path (`SDFMultiFab3D.from_geometry`)** iterates over MultiFab patch boxes via
 `MFIter`. For each box it allocates a small local point array, evaluates the SDF on that
 box only, and writes the result back. No single array covering the full domain is ever
 allocated.
@@ -33,8 +33,8 @@ domain size.
 | Use case | Recommended path |
 |---|---|
 | Quick visualisation, small grids (≤ 128³) | `sample_levelset_3d` |
-| Production grids, large domains (≥ 256³) | `SDFLibrary3D` |
-| AMR workflows (fill only specific patch boxes) | `SDFLibrary3D` |
+| Production grids, large domains (≥ 256³) | `SDFMultiFab3D` |
+| AMR workflows (fill only specific patch boxes) | `SDFMultiFab3D` |
 
 ## Note on compute speed
 

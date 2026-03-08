@@ -3,8 +3,8 @@
 Every class in sdf2d.geometry is tested for:
 - Correct instantiation
 - sdf() returns correct sign (negative inside, positive outside)
-- Transform methods return new Geometry2D
-- Boolean operation methods return new Geometry2D
+- Transform methods return new SDF2D
+- Boolean operation methods return new SDF2D
 """
 
 import numpy as np
@@ -12,7 +12,7 @@ import numpy.testing as npt
 import pytest
 
 from sdf2d import (
-    Geometry2D,
+    SDF2D,
     Circle2D, Box2D, RoundedBox2D, OrientedBox2D, Segment2D,
     Rhombus2D, Trapezoid2D, Parallelogram2D,
     EquilateralTriangle2D, TriangleIsosceles2D, Triangle2D,
@@ -46,13 +46,13 @@ def _grid(n: int = 16) -> np.ndarray:
 # Base class
 # ===========================================================================
 
-class TestGeometry2D:
+class TestSDF2D:
     def test_sdf_callable(self):
-        g = Geometry2D(lambda p: np.zeros(p.shape[:-1]))
+        g = SDF2D(lambda p: np.zeros(p.shape[:-1]))
         assert g.sdf(_grid()).shape == (16, 16)
 
     def test_call_is_sdf(self):
-        g = Geometry2D(lambda p: np.ones(p.shape[:-1]))
+        g = SDF2D(lambda p: np.ones(p.shape[:-1]))
         npt.assert_array_equal(g(_p(0, 0)), g.sdf(_p(0, 0)))
 
     def test_translate_moves_origin(self):
@@ -358,8 +358,8 @@ class TestBoolean2D:
         # Point inside a but outside b → inside subtraction
         assert s.sdf(_p(0.3, 0))[0] < 0
 
-    def test_union_class_is_geometry2d(self):
-        assert isinstance(Union2D(Circle2D(0.3), Box2D((0.2, 0.2))), Geometry2D)
+    def test_union_class_is_sdf2d(self):
+        assert isinstance(Union2D(Circle2D(0.3), Box2D((0.2, 0.2))), SDF2D)
 
     def test_method_union_equals_class(self):
         a = Circle2D(0.3)

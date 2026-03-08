@@ -42,7 +42,7 @@ phi = sample_levelset_3d(shape, bounds=((-1,1),(-1,1),(-1,1)), resolution=(64,64
 
 ```python
 import amrex.space3d as amr
-from sdf3d import SDFLibrary3D
+from sdf3d import SDFMultiFab3D, Sphere3D
 
 amr.initialize([])
 try:
@@ -52,8 +52,8 @@ try:
     ba       = amr.BoxArray(domain); ba.max_size(32)
     dm       = amr.DistributionMapping(ba)
 
-    lib      = SDFLibrary3D(geom, ba, dm)
-    levelset = lib.sphere(center=(0,0,0), radius=0.3)
+    lib      = SDFMultiFab3D(geom, ba, dm)
+    levelset = lib.from_geometry(Sphere3D(0.3))
     # levelset is an amr.MultiFab
 finally:
     amr.finalize()
@@ -64,24 +64,24 @@ finally:
 ### Base class
 
 ```python
-from sdf2d import Geometry2D
+from sdf2d import SDF2D
 ```
 
-`Geometry2D(func)` wraps any callable `func(p: ndarray) -> ndarray` where `p` has shape `(..., 2)`.
+`SDF2D(func)` wraps any callable `func(p: ndarray) -> ndarray` where `p` has shape `(..., 2)`.
 
 #### Methods on every geometry
 
 | Method | Signature | Returns |
 |--------|-----------|---------|
 | `sdf` | `sdf(p)` | signed distance values |
-| `translate` | `translate(tx, ty)` | `Geometry2D` |
-| `rotate` | `rotate(angle_rad)` | `Geometry2D` |
-| `scale` | `scale(factor)` | `Geometry2D` |
-| `round` | `round(radius)` | `Geometry2D` |
-| `onion` | `onion(thickness)` | `Geometry2D` |
-| `union` | `union(other)` | `Geometry2D` |
-| `subtract` | `subtract(other)` | `Geometry2D` |
-| `intersect` | `intersect(other)` | `Geometry2D` |
+| `translate` | `translate(tx, ty)` | `SDF2D` |
+| `rotate` | `rotate(angle_rad)` | `SDF2D` |
+| `scale` | `scale(factor)` | `SDF2D` |
+| `round` | `round(radius)` | `SDF2D` |
+| `onion` | `onion(thickness)` | `SDF2D` |
+| `union` | `union(other)` | `SDF2D` |
+| `subtract` | `subtract(other)` | `SDF2D` |
+| `intersect` | `intersect(other)` | `SDF2D` |
 
 ### Primitive shapes
 
@@ -168,7 +168,7 @@ s = a.subtract(b)   # "subtract b from a"
 from sdf2d import sample_levelset_2d, save_npy
 
 phi = sample_levelset_2d(
-    geom,                          # Geometry2D
+    geom,                          # SDF2D
     bounds=((-1,1), (-1,1)),       # ((xlo,xhi), (ylo,yhi))
     resolution=(nx, ny),
 )
@@ -179,18 +179,30 @@ save_npy("output/levelset.npy", phi)  # creates parent dirs automatically
 
 ### AMReX (2D)
 
+`SDFMultiFab2D` is a **bound factory**: construct it once with the AMReX grid
+layout and it reuses that layout for every call.
+
 ```python
-from sdf2d import SDFLibrary2D
+from sdf2d import SDFMultiFab2D, Circle2D
 import amrex.space2d as amr
 
-lib = SDFLibrary2D(geom, ba, dm)
+lib = SDFMultiFab2D(geom, ba, dm)   # holds the grid layout
 
-mf = lib.circle(center=(cx, cy), radius=r)
-mf = lib.box(center=(cx, cy), size=(hx, hy))
-mf = lib.rounded_box(center=(cx, cy), size=(hx, hy), radius=r)
-mf = lib.hexagon(center=(cx, cy), radius=r)
-mf = lib.from_geometry(geom_obj)   # any Geometry2D
+mf = lib.from_geometry(Circle2D(0.3))   # creates + fills a MultiFab
+```
 
+`from_geometry` is a thin wrapper over the two lower-level methods:
+
+```python
+mf = lib.create_multifab()          # allocate empty MultiFab
+lib.fill_multifab(mf, geom_obj.sdf) # write SDF values into it
+```
+
+Use `fill_multifab` directly to reuse an existing MultiFab or pass a raw
+callable instead of a geometry object.
+
+```python
+# Boolean operations work on MultiFabs directly
 mf = lib.union(mf1, mf2)
 mf = lib.subtract(base, cutter)
 mf = lib.intersect(mf1, mf2)
@@ -202,27 +214,27 @@ mf = lib.negate(mf)
 ### Base class
 
 ```python
-from sdf3d import Geometry3D
+from sdf3d import SDF3D
 ```
 
-`Geometry3D(func)` wraps any callable `func(p: ndarray) -> ndarray` where `p` has shape `(..., 3)`.
+`SDF3D(func)` wraps any callable `func(p: ndarray) -> ndarray` where `p` has shape `(..., 3)`.
 
 #### Methods on every geometry
 
 | Method | Signature | Returns |
 |--------|-----------|---------|
 | `sdf` | `sdf(p)` | signed distance values |
-| `translate` | `translate(tx, ty, tz)` | `Geometry3D` |
-| `rotate_x` | `rotate_x(angle_rad)` | `Geometry3D` |
-| `rotate_y` | `rotate_y(angle_rad)` | `Geometry3D` |
-| `rotate_z` | `rotate_z(angle_rad)` | `Geometry3D` |
-| `scale` | `scale(factor)` | `Geometry3D` |
-| `elongate` | `elongate(hx, hy, hz)` | `Geometry3D` |
-| `round` | `round(radius)` | `Geometry3D` |
-| `onion` | `onion(thickness)` | `Geometry3D` |
-| `union` | `union(other)` | `Geometry3D` |
-| `subtract` | `subtract(other)` | `Geometry3D` |
-| `intersect` | `intersect(other)` | `Geometry3D` |
+| `translate` | `translate(tx, ty, tz)` | `SDF3D` |
+| `rotate_x` | `rotate_x(angle_rad)` | `SDF3D` |
+| `rotate_y` | `rotate_y(angle_rad)` | `SDF3D` |
+| `rotate_z` | `rotate_z(angle_rad)` | `SDF3D` |
+| `scale` | `scale(factor)` | `SDF3D` |
+| `elongate` | `elongate(hx, hy, hz)` | `SDF3D` |
+| `round` | `round(radius)` | `SDF3D` |
+| `onion` | `onion(thickness)` | `SDF3D` |
+| `union` | `union(other)` | `SDF3D` |
+| `subtract` | `subtract(other)` | `SDF3D` |
+| `intersect` | `intersect(other)` | `SDF3D` |
 
 ### Primitive shapes
 
@@ -277,7 +289,7 @@ save_npy("output/levelset.npy", phi)
 from sdf3d.examples import NATOFragment, RocketAssembly
 ```
 
-Both accept a `lib` argument: pass a real `SDFLibrary3D` for AMReX output,
+Both accept a `lib` argument: pass a real `SDFMultiFab3D` for AMReX output,
 or a mock object for pure-numpy use (see `tests/test_complex.py`).
 
 #### `NATOFragment`
@@ -308,17 +320,30 @@ geom, _ = RocketAssembly(
 
 ### AMReX (3D)
 
+`SDFMultiFab3D` is a **bound factory**: construct it once with the AMReX grid
+layout and it reuses that layout for every call.
+
 ```python
-from sdf3d import SDFLibrary3D
+from sdf3d import SDFMultiFab3D, Sphere3D
 import amrex.space3d as amr
 
-lib = SDFLibrary3D(geom, ba, dm)
+lib = SDFMultiFab3D(geom, ba, dm)       # holds the grid layout
 
-mf = lib.sphere(center=(cx,cy,cz), radius=r)
-mf = lib.box(center=(cx,cy,cz), size=(hx,hy,hz))
-mf = lib.round_box(center=(cx,cy,cz), size=(hx,hy,hz), radius=r)
-mf = lib.from_geometry(geom_obj)
+mf = lib.from_geometry(Sphere3D(0.3))  # creates + fills a MultiFab
+```
 
+`from_geometry` is a thin wrapper over the two lower-level methods:
+
+```python
+mf = lib.create_multifab()          # allocate empty MultiFab
+lib.fill_multifab(mf, geom_obj.sdf) # write SDF values into it
+```
+
+Use `fill_multifab` directly to reuse an existing MultiFab or pass a raw
+callable instead of a geometry object.
+
+```python
+# Boolean operations work on MultiFabs directly
 mf = lib.union(mf1, mf2)
 mf = lib.subtract(base, cutter)
 mf = lib.intersect(mf1, mf2)
@@ -327,7 +352,7 @@ mf = lib.negate(mf)
 
 ## STL → SDF — `stl2sdf`
 
-Converts binary or ASCII STL meshes into a `Geometry3D` object using pure NumPy.
+Converts binary or ASCII STL meshes into an `SDF3D` object using pure NumPy.
 Requires a **watertight** (closed, 2-manifold) mesh for correct sign determination.
 Complexity is O(F × N) — no BVH acceleration.
 
@@ -343,7 +368,7 @@ from sdf3d import Sphere3D
 from sdf3d.grid import sample_levelset_3d
 
 wheel = stl_to_geometry("mars_wheel.stl")
-# Returns a Geometry3D — compatible with all analytic primitives
+# Returns an SDF3D — compatible with all analytic primitives
 
 # Combine with analytic shapes
 hollowed = wheel.subtract(Sphere3D(0.3))
@@ -354,7 +379,7 @@ phi = sample_levelset_3d(hollowed, bounds=((-1,1),(-1,1),(-1,1)), resolution=(32
 Optional `ray_dir` keyword argument overrides the default irrational ray direction used
 for sign determination. Avoid axis-aligned directions with axis-aligned meshes.
 
-The returned `Geometry3D` supports all the usual methods: `.translate()`, `.rotate_x/y/z()`,
+The returned `SDF3D` supports all the usual methods: `.translate()`, `.rotate_x/y/z()`,
 `.scale()`, `.union()`, `.subtract()`, `.intersect()`, `.round()`, `.onion()`.
 
 ### Demos
@@ -368,7 +393,9 @@ uv run python examples/stl2sdf/nasa_boolean_demo.py          # mesh union/subtra
 
 ## AMReX integration
 
-Both `SDFLibrary2D` and `SDFLibrary3D` require AMReX to be installed and initialized:
+Both `SDFMultiFab2D` and `SDFMultiFab3D` are **bound factories**: construct
+each one once with the AMReX grid layout (`geom`, `ba`, `dm`) and it reuses
+that layout automatically on every call — like a database connection object.
 
 ```python
 import amrex.space3d as amr   # or amrex.space2d for 2D
@@ -381,9 +408,9 @@ try:
     ba       = amr.BoxArray(domain); ba.max_size(32)
     dm       = amr.DistributionMapping(ba)
 
-    from sdf3d import SDFLibrary3D
-    lib = SDFLibrary3D(geom, ba, dm)
-    mf  = lib.sphere(center=(0,0,0), radius=0.3)
+    from sdf3d import SDFMultiFab3D, Sphere3D
+    lib = SDFMultiFab3D(geom, ba, dm)       # holds the grid layout
+    mf  = lib.from_geometry(Sphere3D(0.3))  # creates + fills a MultiFab
 
     varnames = amr.Vector_string(["phi"])
     amr.write_single_level_plotfile("output/levelset", mf, varnames, geom, 0.0, 0)

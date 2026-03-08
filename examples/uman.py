@@ -21,9 +21,9 @@ except ImportError:
 
 # Connect to your pySdf library
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from sdf2d import Geometry2D, Circle2D, sample_levelset_2d
+from sdf2d import SDF2D, Circle2D, sample_levelset_2d
 
-class ImageLeaf2D(Geometry2D):
+class ImageLeaf2D(SDF2D):
     def __init__(self, hdf5_path: str, dataset_path: str, physical_size_xy: tuple) -> None:
         print(f"📥 Reading 2D SDF from {hdf5_path}...")
         

@@ -1,4 +1,4 @@
-"""AMReX 2-D integration tests for SDFLibrary2D.
+"""AMReX 2-D integration tests for SDFMultiFab2D.
 
 Requires pyAMReX (``amrex.space2d``) installed in the active Python environment.
 Without it the entire module is skipped automatically.
@@ -59,99 +59,67 @@ def _collect(mf, n: int) -> np.ndarray:
 # Tests
 # ---------------------------------------------------------------------------
 
-class TestSDFLibrary2D:
+class TestSDFMultiFab2D:
     @pytest.fixture(autouse=True)
     def init_amrex(self):
         amr2d.initialize([])
         yield
         amr2d.finalize()
 
-    def test_circle_inside_origin(self):
-        from sdf2d import SDFLibrary2D
-        geom, ba, dm = _make_grid(n=32)
-        lib = SDFLibrary2D(geom, ba, dm)
-        mf  = lib.circle(center=(0.0, 0.0), radius=0.3)
-        phi = _collect(mf, 32)
-        assert phi[16, 16] < 0
-
-    def test_box_inside_origin(self):
-        from sdf2d import SDFLibrary2D
-        geom, ba, dm = _make_grid(n=32)
-        lib = SDFLibrary2D(geom, ba, dm)
-        mf  = lib.box(center=(0.0, 0.0), half_size=(0.3, 0.3))
-        phi = _collect(mf, 32)
-        assert phi[16, 16] < 0
-
     def test_returns_multifab(self):
-        from sdf2d import SDFLibrary2D
+        from sdf2d import SDFMultiFab2D, Circle2D
         geom, ba, dm = _make_grid(n=16)
-        lib = SDFLibrary2D(geom, ba, dm)
-        mf  = lib.circle(center=(0.0, 0.0), radius=0.5)
+        lib = SDFMultiFab2D(geom, ba, dm)
+        mf  = lib.from_geometry(Circle2D(0.5))
         assert hasattr(mf, "array")
 
     def test_union_contains_both(self):
-        from sdf2d import SDFLibrary2D
+        from sdf2d import SDFMultiFab2D, Circle2D
         geom, ba, dm = _make_grid(n=32)
-        lib = SDFLibrary2D(geom, ba, dm)
-        a = lib.circle(center=(-0.4, 0.0), radius=0.25)
-        b = lib.circle(center=( 0.4, 0.0), radius=0.25)
+        lib = SDFMultiFab2D(geom, ba, dm)
+        a = lib.from_geometry(Circle2D(0.25).translate(-0.4, 0.0))
+        b = lib.from_geometry(Circle2D(0.25).translate( 0.4, 0.0))
         u = lib.union(a, b)
         phi = _collect(u, 32)
         assert phi[16,  8] < 0   # left circle centre
         assert phi[16, 24] < 0   # right circle centre
 
     def test_subtract_removes_cutter(self):
-        from sdf2d import SDFLibrary2D
+        from sdf2d import SDFMultiFab2D, Circle2D
         geom, ba, dm = _make_grid(n=32)
-        lib = SDFLibrary2D(geom, ba, dm)
-        cutter = lib.circle(center=(0.0, 0.0), radius=0.2)
-        base   = lib.circle(center=(0.0, 0.0), radius=0.5)
+        lib = SDFMultiFab2D(geom, ba, dm)
+        cutter = lib.from_geometry(Circle2D(0.2))
+        base   = lib.from_geometry(Circle2D(0.5))
         result = lib.subtract(cutter, base)
         phi = _collect(result, 32)
         assert phi[16, 16] > 0   # origin is in the hole → outside
         assert phi[16, 21] < 0   # ~(0.25, 0): inside base, outside cutter
 
     def test_intersect_requires_both(self):
-        from sdf2d import SDFLibrary2D
+        from sdf2d import SDFMultiFab2D, Circle2D
         geom, ba, dm = _make_grid(n=32)
-        lib = SDFLibrary2D(geom, ba, dm)
-        a = lib.circle(center=(-0.1, 0.0), radius=0.3)
-        b = lib.circle(center=( 0.1, 0.0), radius=0.3)
+        lib = SDFMultiFab2D(geom, ba, dm)
+        a = lib.from_geometry(Circle2D(0.3).translate(-0.1, 0.0))
+        b = lib.from_geometry(Circle2D(0.3).translate( 0.1, 0.0))
         inter = lib.intersect(a, b)
         phi = _collect(inter, 32)
         assert phi[16, 16] < 0   # origin is in the overlap → inside
         assert phi[16,  4] > 0   # far left (only inside a) → outside intersection
 
     def test_negate_flips_sign(self):
-        from sdf2d import SDFLibrary2D
+        from sdf2d import SDFMultiFab2D, Circle2D
         geom, ba, dm = _make_grid(n=32)
-        lib = SDFLibrary2D(geom, ba, dm)
-        circ     = lib.circle(center=(0.0, 0.0), radius=0.3)
+        lib = SDFMultiFab2D(geom, ba, dm)
+        circ     = lib.from_geometry(Circle2D(0.3))
         neg      = lib.negate(circ)
         phi_orig = _collect(circ, 32)
         phi_neg  = _collect(neg,  32)
         npt.assert_allclose(phi_neg, -phi_orig)
 
-    def test_rounded_box_inside_origin(self):
-        from sdf2d import SDFLibrary2D
-        geom, ba, dm = _make_grid(n=32)
-        lib = SDFLibrary2D(geom, ba, dm)
-        mf = lib.rounded_box(center=(0.0, 0.0), half_size=(0.3, 0.3), radius=0.05)
-        phi = _collect(mf, 32)
-        assert phi[16, 16] < 0
-
-    def test_hexagon_inside_origin(self):
-        from sdf2d import SDFLibrary2D
-        geom, ba, dm = _make_grid(n=32)
-        lib = SDFLibrary2D(geom, ba, dm)
-        mf = lib.hexagon(center=(0.0, 0.0), radius=0.4)
-        phi = _collect(mf, 32)
-        assert phi[16, 16] < 0
-
     def test_from_geometry(self):
-        from sdf2d import SDFLibrary2D, Circle2D
+        from sdf2d import SDFMultiFab2D, Circle2D
         geom, ba, dm = _make_grid(n=32)
-        lib = SDFLibrary2D(geom, ba, dm)
+        lib = SDFMultiFab2D(geom, ba, dm)
         circle_geom = Circle2D(0.3)          # Circle2D takes radius only; centred at origin
         mf = lib.from_geometry(circle_geom)
         phi = _collect(mf, 32)

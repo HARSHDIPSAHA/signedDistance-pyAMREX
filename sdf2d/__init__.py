@@ -11,7 +11,7 @@ Implemented features
 - Boolean operations: Union, Intersection, Subtraction
 - Transforms: translate, rotate, scale, round, onion
 - Grid sampling: :func:`sample_levelset_2d`
-- AMReX MultiFab output: :class:`SDFLibrary2D` (requires pyAMReX 2-D build)
+- AMReX MultiFab output: :class:`SDFMultiFab2D` (requires pyAMReX 2-D build)
 
 Quick start
 -----------
@@ -32,18 +32,18 @@ NumPy mode (no AMReX required)::
 AMReX mode::
 
     import amrex.space2d as amr
-    from sdf2d import SDFLibrary2D
+    from sdf2d import SDFMultiFab2D
 
     amr.initialize([])
     # ... set up geom, ba, dm ...
-    lib      = SDFLibrary2D(geom, ba, dm)
-    levelset = lib.circle(center=(0.0, 0.0), radius=0.3)
+    lib      = SDFMultiFab2D(geom, ba, dm)
+    levelset = lib.from_geometry(Circle2D(0.3))
     amr.finalize()
 """
 
 from .geometry import (
     # Base class
-    Geometry2D,
+    SDF2D,
 
     # Primitive shapes
     Circle2D,
@@ -108,13 +108,13 @@ from .geometry import (
 )
 
 from .grid import sample_levelset_2d, save_npy
-from .amrex import SDFLibrary2D
+from .amrex import SDFMultiFab2D
 
 __version__ = "0.2.0"
 
 __all__ = [
     # Base
-    "Geometry2D",
+    "SDF2D",
 
     # Primitive shapes
     "Circle2D",
@@ -182,5 +182,5 @@ __all__ = [
     "save_npy",
 
     # AMReX integration
-    "SDFLibrary2D",
+    "SDFMultiFab2D",
 ]

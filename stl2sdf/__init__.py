@@ -1,7 +1,7 @@
 """stl2sdf — STL mesh to Signed Distance Field.
 
 Converts a triangulated surface mesh (STL file) into a
-:class:`sdf3d.geometry.Geometry3D` that composes with analytic primitives.
+:class:`sdf3d.geometry.SDF3D` that composes with analytic primitives.
 
 Quick start
 -----------
