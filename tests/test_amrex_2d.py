@@ -124,3 +124,11 @@ class TestSDFMultiFab2D:
         mf = lib.from_geometry(circle_geom)
         phi = _collect(mf, 32)
         assert phi[16, 16] < 0
+
+    def test_to_multifab_member(self):
+        from sdf2d import Circle2D
+        amrex_geom, ba, dm = _make_grid(n=32)
+        circle = Circle2D(0.3)
+        mf = circle.to_multifab(amrex_geom, ba, dm)
+        phi = _collect(mf, 32)
+        assert phi[16, 16] < 0   # origin is inside → negative

@@ -51,9 +51,11 @@ lib = SDFMultiFab3D(geom, ba, dm)
 # Build MultiFabs for each shape
 # ---------------------------------------------------------------------------
 from sdf3d import Sphere3D, Box3D, RoundBox3D
-mf_sphere    = lib.from_geometry(Sphere3D(0.3))
-mf_box       = lib.from_geometry(Box3D((0.25, 0.2, 0.15)))
-mf_round_box = lib.from_geometry(RoundBox3D((0.25, 0.2, 0.15), 0.05))
+sphere       = Sphere3D(0.3)
+box          = Box3D((0.25, 0.2, 0.15))
+mf_sphere    = sphere.to_multifab(geom, ba, dm)
+mf_box       = box.to_multifab(geom, ba, dm)
+mf_round_box = RoundBox3D((0.25, 0.2, 0.15), 0.05).to_multifab(geom, ba, dm)
 mf_union     = lib.union(mf_sphere, mf_box)
 mf_subtract  = lib.subtract(mf_box, mf_sphere)  # box with sphere subtracted
 

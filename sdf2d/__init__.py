@@ -10,7 +10,7 @@ Implemented features
 - Primitive shapes: Circle, Box, triangles, polygons, stars, arcs, ...
 - Boolean operations: Union, Intersection, Subtraction
 - Transforms: translate, rotate, scale, round, onion
-- Grid sampling: :func:`sample_levelset_2d`
+- Grid sampling: :meth:`SDF2D.to_array`
 - AMReX MultiFab output: :class:`SDFMultiFab2D` (requires pyAMReX 2-D build)
 
 Quick start
@@ -18,7 +18,7 @@ Quick start
 
 NumPy mode (no AMReX required)::
 
-    from sdf2d import Circle2D, Box2D, Union2D, sample_levelset_2d
+    from sdf2d import Circle2D, Box2D, Union2D
     import numpy as np
 
     circle = Circle2D(radius=0.3)
@@ -27,17 +27,15 @@ NumPy mode (no AMReX required)::
 
     bounds     = ((-1.0, 1.0), (-1.0, 1.0))
     resolution = (512, 512)
-    phi = sample_levelset_2d(shape, bounds, resolution)
+    phi = shape.to_array(bounds, resolution)
 
 AMReX mode::
 
     import amrex.space2d as amr
-    from sdf2d import SDFMultiFab2D
 
     amr.initialize([])
     # ... set up geom, ba, dm ...
-    lib      = SDFMultiFab2D(geom, ba, dm)
-    levelset = lib.from_geometry(Circle2D(0.3))
+    levelset = Circle2D(0.3).to_multifab(geom, ba, dm)
     amr.finalize()
 """
 
@@ -107,7 +105,7 @@ from .geometry import (
     Subtraction2D,
 )
 
-from .grid import sample_levelset_2d, save_npy
+from .geometry import save_npy
 from .amrex import SDFMultiFab2D
 
 __version__ = "0.2.0"
@@ -178,7 +176,6 @@ __all__ = [
     "Subtraction2D",
 
     # Grid utilities
-    "sample_levelset_2d",
     "save_npy",
 
     # AMReX integration

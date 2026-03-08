@@ -1,13 +1,11 @@
 """Tests for sdf3d.examples geometries (NATOFragment, RocketAssembly).
 
 These tests do NOT require AMReX — they test the geometry objects
-directly using sample_levelset_3d.
+directly using SDF3D.to_array().
 """
 
 import numpy as np
 import pytest
-
-from sdf3d import sample_levelset_3d
 
 
 # ===========================================================================
@@ -30,14 +28,14 @@ class TestNATOFragment:
         # Evaluate on a small grid
         bounds = ((-0.02, 0.02), (-0.02, 0.02), (-0.005, 0.02))
         res = (8, 8, 8)
-        phi = sample_levelset_3d(geom, bounds, res)
+        phi = geom.to_array(bounds, res)
         assert phi.shape == (8, 8, 8)
 
     def test_has_interior(self):
         from sdf3d.examples import NATOFragment
         geom = NATOFragment(diameter=14.30e-3)
         bounds = ((-0.01, 0.01), (-0.01, 0.01), (0.001, 0.015))
-        phi = sample_levelset_3d(geom, bounds, (16, 16, 16))
+        phi = geom.to_array(bounds, (16, 16, 16))
         # The fragment cylinder occupies this region
         assert (phi < 0).any()
 
@@ -71,14 +69,14 @@ class TestRocketAssembly:
         from sdf3d.examples import RocketAssembly
         geom = RocketAssembly()
         bounds = ((-0.5, 0.5), (-0.5, 0.5), (-0.5, 1.0))
-        phi = sample_levelset_3d(geom, bounds, (8, 8, 8))
+        phi = geom.to_array(bounds, (8, 8, 8))
         assert phi.shape == (8, 8, 8)
 
     def test_has_interior(self):
         from sdf3d.examples import RocketAssembly
         geom = RocketAssembly(body_radius=0.15, L_extra=0.4)
         bounds = ((-0.1, 0.1), (-0.1, 0.1), (-0.1, 0.1))
-        phi = sample_levelset_3d(geom, bounds, (16, 16, 16))
+        phi = geom.to_array(bounds, (16, 16, 16))
         assert (phi < 0).any()
 
     def test_four_fins(self):

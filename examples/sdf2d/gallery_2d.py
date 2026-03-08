@@ -17,7 +17,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import matplotlib.pyplot as plt
 import numpy as np
 
-from sdf2d import sample_levelset_2d
 from sdf2d.geometry import SDF2D
 
 
@@ -109,7 +108,7 @@ def render_gallery(shapes: list[tuple[str, SDF2D]], out_path: Path, ncols: int =
     axes = np.asarray(axes).ravel()
 
     for ax, (label, geom) in zip(axes, shapes):
-        phi = sample_levelset_2d(geom, _BOUNDS, _RES)
+        phi = geom.to_array(_BOUNDS, _RES)
         ax.set_facecolor("#111111")
         ax.set_xticks([])
         ax.set_yticks([])

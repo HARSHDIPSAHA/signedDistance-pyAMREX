@@ -17,7 +17,7 @@ import numpy.typing as npt
 from typing import TypeAlias
 
 from _sdf_common import (
-    FloatArray,
+    FloatArray, Distances,
     vec2, vec3,
     length, dot, dot2, clamp, safe_div,
     opUnion, opSubtraction, opIntersection,

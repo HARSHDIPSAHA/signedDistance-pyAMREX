@@ -111,3 +111,11 @@ class TestSDFMultiFab3D:
         mf = lib.from_geometry(sphere_geom)
         phi = _collect(mf, 16)
         assert phi[8, 8, 8] < 0
+
+    def test_to_multifab_member(self):
+        from sdf3d import Sphere3D
+        amrex_geom, ba, dm = _make_grid(n=16)
+        sphere = Sphere3D(0.3)
+        mf = sphere.to_multifab(amrex_geom, ba, dm)
+        phi = _collect(mf, 16)
+        assert phi[8, 8, 8] < 0   # origin is inside → negative

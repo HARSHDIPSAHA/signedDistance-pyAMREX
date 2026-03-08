@@ -21,7 +21,7 @@ except ImportError:
 
 # Connect to your pySdf library
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from sdf2d import SDF2D, Circle2D, sample_levelset_2d
+from sdf2d import SDF2D, Circle2D
 
 class ImageLeaf2D(SDF2D):
     def __init__(self, hdf5_path: str, dataset_path: str, physical_size_xy: tuple) -> None:
@@ -141,10 +141,10 @@ def main():
     bounds = ((-0.05, 0.05), (-0.05, 0.05))
     
     # We use a 300x300 sampling grid. You can increase this for higher resolution!
-    phi_union = sample_levelset_2d(scene_union, bounds=bounds, resolution=(300, 300))
+    phi_union = scene_union.to_array(bounds=bounds, resolution=(300, 300))
     save_visuals(phi_union, bounds, "prof_proof_UNION", "2D Union: Image + Circle")
-    
-    phi_diff = sample_levelset_2d(scene_diff, bounds=bounds, resolution=(300, 300))
+
+    phi_diff = scene_diff.to_array(bounds=bounds, resolution=(300, 300))
     save_visuals(phi_diff, bounds, "prof_proof_SUBTRACTION", "2D Subtraction: Image - Circle")
 
 if __name__ == "__main__":

@@ -7,11 +7,10 @@ Quick start
 -----------
 >>> from stl2sdf import stl_to_geometry
 >>> from sdf3d import Sphere3D
->>> from sdf3d.grid import sample_levelset_3d
 >>>
 >>> wheel = stl_to_geometry("mars_wheel.stl")
 >>> hollowed = wheel.subtract(Sphere3D(0.3))
->>> phi = sample_levelset_3d(hollowed, bounds=((-1,1),(-1,1),(-1,1)), resolution=(32,32,32))
+>>> phi = hollowed.to_array(bounds=((-1,1),(-1,1),(-1,1)), resolution=(32,32,32))
 
 Watertight requirement
 ----------------------

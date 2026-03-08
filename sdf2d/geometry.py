@@ -2,15 +2,28 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable, Sequence
 from typing import TypeAlias
 
 import numpy as np
+import numpy.typing as npt
 
 from . import primitives as sdf
 from .primitives import Points2D, Distances
 
 SDFFunc: TypeAlias = Callable[[Points2D], Distances]
+_Array = npt.NDArray[np.floating]
+_Bounds2D = tuple[tuple[float, float], tuple[float, float]]
+_Resolution2D = tuple[int, int]
+
+
+def save_npy(path: str, phi: _Array) -> None:
+    """Save *phi* array to *path* (creates parent directories if needed)."""
+    out_dir = os.path.dirname(path)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+    np.save(path, phi)
 
 
 # ===========================================================================
@@ -92,6 +105,53 @@ class SDF2D:
         return SDF2D(lambda p: sdf.opTx2D(p, rot, np.zeros(2), self.sdf))
 
     # ------------------------------------------------------------------
+    # Grid and AMReX output
+    # ------------------------------------------------------------------
+
+    def to_array(self, bounds: _Bounds2D, resolution: _Resolution2D) -> _Array:
+        """Sample this SDF on a uniform 2-D cell-centred grid.
+
+        Parameters
+        ----------
+        bounds:
+            ``((x0, x1), (y0, y1))`` physical extents of the domain.
+        resolution:
+            ``(nx, ny)`` number of cells along each axis.
+
+        Returns
+        -------
+        numpy.ndarray
+            Shape ``(ny, nx)`` array of signed distances, row-major (y first).
+        """
+        (x0, x1), (y0, y1) = bounds
+        nx, ny = resolution
+        xs = np.linspace(x0, x1, nx, endpoint=False) + (x1 - x0) / (2.0 * nx)
+        ys = np.linspace(y0, y1, ny, endpoint=False) + (y1 - y0) / (2.0 * ny)
+        Y, X = np.meshgrid(ys, xs, indexing="ij")
+        p = np.stack([X, Y], axis=-1)
+        return self.sdf(p)
+
+    def to_multifab(self, amrex_geom, ba, dm):
+        """Fill an AMReX ``MultiFab`` with this geometry's SDF values.
+
+        Parameters
+        ----------
+        amrex_geom:
+            An ``amrex.space2d.Geometry`` object describing the domain.
+        ba:
+            An ``amrex.space2d.BoxArray`` describing the grid decomposition.
+        dm:
+            An ``amrex.space2d.DistributionMapping`` for MPI rank assignment.
+
+        Returns
+        -------
+        amrex.space2d.MultiFab
+            A single-component MultiFab filled with signed distance values.
+        """
+        from .amrex import SDFMultiFab2D
+        return SDFMultiFab2D(amrex_geom, ba, dm).from_geometry(self)
+
+    # ------------------------------------------------------------------
     # Visualisation helpers
     # ------------------------------------------------------------------
 
@@ -124,14 +184,13 @@ class SDF2D:
             path = Path("output") / path
         path.parent.mkdir(parents=True, exist_ok=True)
 
+        import warnings
+
         import matplotlib.pyplot as plt
 
-        from .grid import sample_levelset_2d
-
-        import warnings
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            phi = sample_levelset_2d(self, bounds, resolution)
+            phi = self.to_array(bounds, resolution)
 
         (x0, x1), (y0, y1) = bounds
         extent = (x0, x1, y0, y1)

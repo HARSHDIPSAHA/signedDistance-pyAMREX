@@ -44,10 +44,12 @@ lib = SDFMultiFab2D(geom, ba, dm)
 # Build MultiFabs for each shape
 # ---------------------------------------------------------------------------
 from sdf2d import Circle2D, Box2D, RoundedBox2D, Hexagon2D
-mf_circle      = lib.from_geometry(Circle2D(0.5))
-mf_box         = lib.from_geometry(Box2D((0.4, 0.3)))
-mf_rounded_box = lib.from_geometry(RoundedBox2D((0.4, 0.3), 0.1))
-mf_hexagon     = lib.from_geometry(Hexagon2D(0.4))
+circle         = Circle2D(0.5)
+box            = Box2D((0.4, 0.3))
+mf_circle      = circle.to_multifab(geom, ba, dm)
+mf_box         = box.to_multifab(geom, ba, dm)
+mf_rounded_box = RoundedBox2D((0.4, 0.3), 0.1).to_multifab(geom, ba, dm)
+mf_hexagon     = Hexagon2D(0.4).to_multifab(geom, ba, dm)
 mf_union       = lib.union(mf_circle, mf_box)
 mf_subtract    = lib.subtract(mf_box, mf_circle)  # box with circle subtracted
 

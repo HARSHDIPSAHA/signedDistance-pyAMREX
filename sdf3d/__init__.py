@@ -10,7 +10,7 @@ Implemented features
 - Primitive shapes: Sphere, Box, RoundBox, Cylinder, ConeExact, Torus
 - Boolean operations: Union, Intersection, Subtraction
 - Transforms: translate, rotate_x/y/z, scale, elongate, round, onion
-- Grid sampling: :func:`sample_levelset_3d`
+- Grid sampling: :meth:`SDF3D.to_array`
 - AMReX MultiFab output: :class:`SDFMultiFab3D` (requires pyAMReX 3-D build)
 - Example assemblies: :class:`~sdf3d.examples.NATOFragment`,
   :class:`~sdf3d.examples.RocketAssembly`
@@ -20,7 +20,7 @@ Quick start
 
 NumPy mode (no AMReX required)::
 
-    from sdf3d import Sphere3D, Box3D, Union3D, sample_levelset_3d
+    from sdf3d import Sphere3D, Box3D, Union3D
     import numpy as np
 
     sphere = Sphere3D(radius=0.3)
@@ -29,17 +29,15 @@ NumPy mode (no AMReX required)::
 
     bounds     = ((-1.0, 1.0), (-1.0, 1.0), (-1.0, 1.0))
     resolution = (64, 64, 64)
-    phi = sample_levelset_3d(shape, bounds, resolution)
+    phi = shape.to_array(bounds, resolution)
 
 AMReX mode::
 
     import amrex.space3d as amr
-    from sdf3d import SDFMultiFab3D
 
     amr.initialize([])
     # ... set up geom, ba, dm ...
-    lib      = SDFMultiFab3D(geom, ba, dm)
-    levelset = lib.from_geometry(Sphere3D(0.3))
+    levelset = Sphere3D(0.3).to_multifab(geom, ba, dm)
     amr.finalize()
 """
 
@@ -56,7 +54,7 @@ from .geometry import (
     Subtraction3D,
     save_plotly_html_grid,
 )
-from .grid import sample_levelset_3d, save_npy
+from .geometry import save_npy
 from .amrex import SDFMultiFab3D
 from .examples import NATOFragment, RocketAssembly
 
@@ -80,7 +78,6 @@ __all__ = [
     "Subtraction3D",
 
     # Grid utilities
-    "sample_levelset_3d",
     "save_npy",
 
     # AMReX integration

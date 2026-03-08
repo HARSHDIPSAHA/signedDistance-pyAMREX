@@ -2,15 +2,28 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable, Sequence
 from typing import TypeAlias
 
 import numpy as np
+import numpy.typing as npt
 
 from . import primitives as sdf
 from .primitives import Points3D, Distances
 
 SDFFunc: TypeAlias = Callable[[Points3D], Distances]
+_Array = npt.NDArray[np.floating]
+_Bounds3D = tuple[tuple[float, float], tuple[float, float], tuple[float, float]]
+_Resolution3D = tuple[int, int, int]
+
+
+def save_npy(path: str, phi: _Array) -> None:
+    """Save *phi* array to *path* (creates parent directories if needed)."""
+    out_dir = os.path.dirname(path)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+    np.save(path, phi)
 
 
 # ===========================================================================
@@ -109,6 +122,54 @@ class SDF3D:
         return SDF3D(lambda p: sdf.opTx(p, rot, np.zeros(3), self.sdf))
 
     # ------------------------------------------------------------------
+    # Grid and AMReX output
+    # ------------------------------------------------------------------
+
+    def to_array(self, bounds: _Bounds3D, resolution: _Resolution3D) -> _Array:
+        """Sample this SDF on a uniform 3-D cell-centred grid.
+
+        Parameters
+        ----------
+        bounds:
+            ``((x0, x1), (y0, y1), (z0, z1))`` physical extents of the domain.
+        resolution:
+            ``(nx, ny, nz)`` number of cells along each axis.
+
+        Returns
+        -------
+        numpy.ndarray
+            Shape ``(nz, ny, nx)`` array of signed distances, z-first indexing.
+        """
+        (x0, x1), (y0, y1), (z0, z1) = bounds
+        nx, ny, nz = resolution
+        xs = np.linspace(x0, x1, nx, endpoint=False) + (x1 - x0) / (2.0 * nx)
+        ys = np.linspace(y0, y1, ny, endpoint=False) + (y1 - y0) / (2.0 * ny)
+        zs = np.linspace(z0, z1, nz, endpoint=False) + (z1 - z0) / (2.0 * nz)
+        Z, Y, X = np.meshgrid(zs, ys, xs, indexing="ij")
+        p = np.stack([X, Y, Z], axis=-1)
+        return self.sdf(p)
+
+    def to_multifab(self, amrex_geom, ba, dm):
+        """Fill an AMReX ``MultiFab`` with this geometry's SDF values.
+
+        Parameters
+        ----------
+        amrex_geom:
+            An ``amrex.space3d.Geometry`` object describing the domain.
+        ba:
+            An ``amrex.space3d.BoxArray`` describing the grid decomposition.
+        dm:
+            An ``amrex.space3d.DistributionMapping`` for MPI rank assignment.
+
+        Returns
+        -------
+        amrex.space3d.MultiFab
+            A single-component MultiFab filled with signed distance values.
+        """
+        from .amrex import SDFMultiFab3D
+        return SDFMultiFab3D(amrex_geom, ba, dm).from_geometry(self)
+
+    # ------------------------------------------------------------------
     # Visualisation helpers
     # ------------------------------------------------------------------
 
@@ -155,9 +216,7 @@ class SDF3D:
             print(f"  save_png: {exc} — skipping")
             return
 
-        from .grid import sample_levelset_3d
-
-        phi = sample_levelset_3d(self, bounds, resolution)
+        phi = self.to_array(bounds, resolution)
         if phi.min() >= 0 or phi.max() <= 0:
             print(f"  save_png: no zero crossing — skipping {path.name}")
             return
@@ -383,8 +442,6 @@ def save_plotly_html_grid(
         print(f"  save_plotly_html_grid: {exc} — skipping")
         return
 
-    from .grid import sample_levelset_3d
-
     path = Path(path)
     if path.parent == Path('.'):
         path = Path("output") / path
@@ -405,7 +462,7 @@ def save_plotly_html_grid(
         nx, ny, nz = resolution
         (x0, x1), (y0, y1), (z0, z1) = panel_bounds
 
-        phi = sample_levelset_3d(geom, panel_bounds, resolution)
+        phi = geom.to_array(panel_bounds, resolution)
 
         xs = np.linspace(x0, x1, nx)
         ys = np.linspace(y0, y1, ny)
