@@ -1,0 +1,45 @@
+{
+	"Image Properties":{
+	    "pixel scale": 0,
+ 	    "image width": 40,
+	    "image height": 40,
+	    "method": "binary"	    
+	    },
+
+	"Preprocessing Properties":{
+            "Preprocess Image": true,
+	    "max grid length": 0,
+            "sigma values": 5,
+            "filter diameter": 7,
+            "Perform morphological operations": true,
+            "kernel size": 3,
+            "iterations": 1,
+       	    "Threshold HEDS": false,
+	    "k1": 1.0,
+	    "k2": 1.0,
+            "PSNR tolerance": 0.1,
+            "Display comparison": false
+	    },	 
+
+	"Morphometry":{
+	    "run morphometry": true,
+            "run extractDefect": true,
+            "units": "um",
+            "plot regions": true
+	    },
+
+        "Segmentation":{
+            "run segmentImage": true,
+            "segmentation method": "binary",
+            "mu": 0.20,
+            "lambda1": 1.0,
+            "lambda2": 1.0,
+            "dt": 0.5,
+            "phi tolerance": 1.0e-3,
+            "energy tolerance": 1.0e-6,
+            "maximum number of iterations": 750,
+            "return energies": false,
+            "print steps": true,
+            "datatype": "DOUBLE"
+            }    
+}
