@@ -18,6 +18,7 @@ SDF formulas are adapted from [iquilezles.org](https://iquilezles.org/articles/d
 | `sdf2d` | 2D geometry classes, grid sampling, optional AMReX output |
 | `sdf3d` | 3D geometry classes, grid sampling, optional AMReX output |
 | `stl2sdf` | Convert STL mesh → SDF grid (pure NumPy, watertight meshes only) |
+| `img2sdf` | Image → SDF via Chan-Vese segmentation (uSCMAN integrated) |
 
 ## Files
 
@@ -26,6 +27,7 @@ SDF formulas are adapted from [iquilezles.org](https://iquilezles.org/articles/d
 - `sdf3d/` — 3D package: `Sphere3D`, `Box3D`, `Torus3D`, … (~30 shapes + warps)
 - `sdf3d/examples/` — High-level assemblies (`NATOFragment`, `RocketAssembly`)
 - `stl2sdf/` — STL mesh → SDF: `stl_to_geometry`
+- `img2sdf/` — Image → SDF: `image_to_geometry_2d`, `image_to_levelset_2d`, `ImageGeometry2D`
 - `tests/` — pytest suite; no AMReX required (`test_amrex.py` skips automatically)
 - `scripts/` — Gallery scripts and AMReX plotfile renderer
 - `examples/` — Standalone demos; outputs written to `examples/`
@@ -97,6 +99,30 @@ figure.
 uv run python examples/stl_sdf_demo.py --res 20   # quick draft
 uv run python examples/stl_sdf_demo.py --res 40   # full quality
 ```
+
+### `img2sdf` — Image to SDF
+
+```python
+from img2sdf import image_to_geometry_2d, image_to_levelset_2d
+import json
+
+params = json.load(open("HEDS/HEDS.json"))
+
+# Get a composable geometry object (ImageGeometry2D inherits Geometry2D)
+geom = image_to_geometry_2d("HEDS/HEDS.jpg", params, bounds=((-1, 1), (-1, 1)))
+
+# Compose with analytic shapes
+from sdf2d import Circle2D, sample_levelset_2d
+scene = geom.union(Circle2D(radius=0.1).translate(0.5, 0.0))
+phi = sample_levelset_2d(scene, bounds=((-1, 1), (-1, 1)), resolution=(256, 256))
+# phi.shape == (256, 256);  phi < 0 inside, phi > 0 outside
+
+# Or get just the raw ndarray
+phi = image_to_levelset_2d("HEDS/HEDS.jpg", params)
+```
+
+> **Sign convention:** uSCMAN outputs φ > 0 inside; pySdf uses φ < 0 inside.
+> The negation is applied automatically in `image_to_levelset_2d` and `image_to_geometry_2d`.
 
 ### AMReX output (optional)
 
