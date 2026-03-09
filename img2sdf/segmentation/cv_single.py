@@ -227,15 +227,13 @@ def chan_vese(ImgName: str, image, Inputs: dict, GPU_available):
     # Print convergence status
     print(f'{ImgName} converged on iteration {i}' if i < max_num_iter else f'{ImgName} did not converge')
     
-    # Ensure all GPU computations are finished before moving data back to CPU
     if GPU_available:
         xp.cuda.Device().synchronize()
         xp.get_default_memory_pool().free_all_blocks()
-        
-        # Convert variables back to NumPy arrays
-        phi = xp.asnumpy(phi)
-        segmentation = xp.asnumpy(segmentation)
-        energies = [arr.get() for arr in energies]
     
+        phi = phi.get()
+        segmentation = [seg.get() for seg in segmentation]
+        energies = [e.get() for e in energies]
+        
     # Return segmentation and phi; optionally return energies if extended_output is True
     return (segmentation, [phi], energies) if extended_output else (segmentation, [phi])
