@@ -28,6 +28,17 @@ pySdf/
 │   ├── __init__.py       # Re-exports stl_to_geometry
 │   ├── _math.py          # Private: STL loader + Ericson closest-point + Möller-Trumbore sign
 │   └── geometry.py       # Public: stl_to_geometry(path) -> Geometry3D
+├── img2sdf/
+│   ├── __init__.py       # Exports ImageGeometry2D, image_to_levelset_2d, image_to_geometry_2d, SDFLibraryImg2D
+│   ├── _pipeline.py      # Orchestrator: replaces uSCMAN's Analysis.py
+│   ├── geometry.py       # ImageGeometry2D (inherits Geometry2D)
+│   ├── grid.py           # image_to_levelset_2d(), image_to_geometry_2d()
+│   ├── amrex.py          # SDFLibraryImg2D (delegates to sdf2d.amrex.SDFLibrary2D)
+│   ├── image_leaf.py     # ImageExtruded3D (inherits Geometry3D, extrudes 2D SDF into 3D)
+│   ├── segmentation/     # Chan-Vese segmentation (cv_single.py, cv_multi.py)
+│   ├── morphometry/      # Morphometric analysis
+│   ├── preprocessing/    # Image preprocessing
+│   └── io/               # HDF5 I/O helpers
 ├── tests/                # pytest suite; test_amrex.py skips without pyAMReX
 ├── scripts/
 │   ├── gallery_2d.py           # All sdf2d shapes on one matplotlib page
@@ -54,8 +65,14 @@ pySdf/
 ## Key naming conventions
 - 3D geometry: `Sphere3D`, `Box3D`, `Union3D`, `Intersection3D`, `Subtraction3D`
 - 2D geometry: `Circle2D`, `Box2D`, `Union2D`, `Intersection2D`, `Subtraction2D`
-- Grid functions: `sample_levelset_2d` / `sample_levelset_3d`
-- AMReX classes: `SDFLibrary2D` / `SDFLibrary3D`
+- Image geometry: `ImageGeometry2D` (2D), `ImageExtruded3D` (3D extrusion of 2D SDF)
+- Grid functions: `sample_levelset_2d` / `sample_levelset_3d` / `image_to_levelset_2d`
+- AMReX classes: `SDFLibrary2D` / `SDFLibrary3D` / `SDFLibraryImg2D`
+
+### img2sdf sign convention
+uSCMAN uses phi > 0 inside; pySdf uses phi < 0 inside. The negation is applied
+automatically in `img2sdf/grid.py` (`image_to_levelset_2d`) and `img2sdf/image_leaf.py`
+(`ImageExtruded3D`). No manual negation is needed when using the public API.
 
 ## Running tests
 ```bash
