@@ -7,18 +7,16 @@ from collections.abc import Callable, Sequence
 from typing import TypeAlias
 
 import numpy as np
-import numpy.typing as npt
 
 from . import primitives as sdf
 from .primitives import Points2D, Distances
 
 SDFFunc: TypeAlias = Callable[[Points2D], Distances]
-_Array = npt.NDArray[np.floating]
 _Bounds2D = tuple[tuple[float, float], tuple[float, float]]
 _Resolution2D = tuple[int, int]
 
 
-def save_npy(path: str, phi: _Array) -> None:
+def save_npy(path: str, phi: np.ndarray) -> None:
     """Save *phi* array to *path* (creates parent directories if needed)."""
     out_dir = os.path.dirname(path)
     if out_dir:
@@ -118,7 +116,7 @@ class SDF2D:
     # Grid and AMReX output
     # ------------------------------------------------------------------
 
-    def to_array(self, bounds: _Bounds2D, resolution: _Resolution2D) -> _Array:
+    def to_numpy(self, bounds: _Bounds2D, resolution: _Resolution2D) -> np.ndarray:
         """Sample this SDF on a uniform 2-D cell-centred grid.
 
         Parameters
@@ -141,38 +139,44 @@ class SDF2D:
         p = np.stack([X, Y], axis=-1)
         return self.sdf(p)
 
-    def fill(self, grid) -> "amr.MultiFab":
-        """Fill *grid* with this SDF and return a raw ``amrex.space2d.MultiFab``.
+    def to_multifab(self, grid) -> "amr.MultiFab":
+        """Evaluate this SDF on *grid* and return a filled MultiFab.
 
         Parameters
         ----------
         grid:
-            A :class:`~sdf2d.amrex.MultiFabGrid2D` instance that defines the
-            domain layout (geom, ba, dm).
+            A :class:`~sdf2d.amrex.MultiFabGrid2D` instance.
 
         Returns
         -------
         amrex.space2d.MultiFab
-            A single-component MultiFab filled with signed distance values.
         """
-        mf = grid.create_multifab()
-        grid.fill_multifab(mf, self.sdf)
+        import amrex.space2d as amr
+        from . import primitives as _sdf
+
+        dx = grid.geom.data().CellSize()
+        if hasattr(grid.geom, "ProbLoArray"):
+            prob_lo = grid.geom.ProbLoArray()
+        elif hasattr(grid.geom, "ProbLo"):
+            prob_lo = np.array(grid.geom.ProbLo())
+        else:
+            raise AttributeError("Geometry has no ProbLoArray/ProbLo accessor")
+
+        mf = amr.MultiFab(grid.ba, grid.dm, 1, 0)
+        for mfi in mf:
+            arr = mf.array(mfi).to_numpy()
+            bx  = mfi.validbox()
+            i_lo, j_lo = bx.lo_vect
+            i_hi, j_hi = bx.hi_vect
+
+            i = np.arange(i_lo, i_hi + 1)
+            j = np.arange(j_lo, j_hi + 1)
+            x = (i + 0.5) * dx[0] + prob_lo[0]
+            y = (j + 0.5) * dx[1] + prob_lo[1]
+            Y, X = np.meshgrid(y, x, indexing="ij")
+            view = arr[:, :, 0] if arr.ndim == 3 else arr[:, :, 0, 0]
+            view[...] = self.sdf(_sdf.vec2(X, Y))
         return mf
-
-    def to_multifab(self, amrex_geom, ba, dm) -> "amr.MultiFab":
-        """Convenience: create a :class:`~sdf2d.amrex.MultiFabGrid2D` and fill.
-
-        Equivalent to::
-
-            grid = MultiFabGrid2D(amrex_geom, ba, dm)
-            mf   = shape.fill(grid)
-
-        Returns
-        -------
-        amrex.space2d.MultiFab
-        """
-        from .amrex import MultiFabGrid2D
-        return self.fill(MultiFabGrid2D(amrex_geom, ba, dm))
 
     # ------------------------------------------------------------------
     # Visualisation helpers
@@ -213,7 +217,7 @@ class SDF2D:
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            phi = self.to_array(bounds, resolution)
+            phi = self.to_numpy(bounds, resolution)
 
         (x0, x1), (y0, y1) = bounds
         extent = (x0, x1, y0, y1)

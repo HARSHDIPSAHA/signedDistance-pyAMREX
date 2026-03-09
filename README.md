@@ -59,7 +59,7 @@ circle = Circle2D(radius=0.3)
 box    = Box2D(half_size=(0.4, 0.2)).translate(0.5, 0.0)
 shape  = circle | box              # union operator
 
-phi = shape.to_array(bounds=((-1,1), (-1,1)), resolution=(128, 128))
+phi = shape.to_numpy(bounds=((-1,1), (-1,1)), resolution=(128, 128))
 # phi.shape == (128, 128);  phi < 0 inside, phi > 0 outside
 ```
 
@@ -72,7 +72,7 @@ sphere = Sphere3D(radius=0.3)
 box    = Box3D(half_size=(0.2, 0.2, 0.2)).translate(0.4, 0.0, 0.0)
 shape  = sphere | box              # union operator
 
-phi = shape.to_array(bounds=((-1,1),(-1,1),(-1,1)), resolution=(64,64,64))
+phi = shape.to_numpy(bounds=((-1,1),(-1,1),(-1,1)), resolution=(64,64,64))
 # phi.shape == (64, 64, 64);  phi < 0 inside, phi > 0 outside
 ```
 
@@ -112,13 +112,10 @@ try:
     ba       = amr.BoxArray(domain); ba.max_size(32)
     dm       = amr.DistributionMapping(ba)
 
-    # Convenience: single shape → MultiFab
-    mf = Sphere3D(0.3).to_multifab(geom, ba, dm)
-
-    # Named grid context: fill multiple shapes, boolean ops on MultiFabs
+    # Grid context — use it for all fills and boolean ops
     grid = MultiFabGrid3D(geom, ba, dm)
-    mf_a = Sphere3D(0.3).fill(grid)
-    mf_b = Box3D((0.2, 0.2, 0.2)).fill(grid)
+    mf_a = Sphere3D(0.3).to_multifab(grid)
+    mf_b = Box3D((0.2, 0.2, 0.2)).to_multifab(grid)
     mf_u = grid.union(mf_a, mf_b)           # min(a, b) element-wise
     mf_s = grid.subtract(mf_b, mf_a)        # box with sphere carved out
 finally:

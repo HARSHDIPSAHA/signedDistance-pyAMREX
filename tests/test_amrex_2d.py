@@ -62,13 +62,14 @@ class TestMultiFabGrid2D:
         from sdf2d import Circle2D, MultiFabGrid2D
         geom, ba, dm = _make_grid(n=16)
         grid = MultiFabGrid2D(geom, ba, dm)
-        mf = Circle2D(0.5).fill(grid)
+        mf = Circle2D(0.5).to_multifab(grid)
         assert hasattr(mf, "array")
 
     def test_to_multifab_convenience(self):
-        from sdf2d import Circle2D
+        from sdf2d import Circle2D, MultiFabGrid2D
         geom, ba, dm = _make_grid(n=32)
-        mf = Circle2D(0.3).to_multifab(geom, ba, dm)
+        grid = MultiFabGrid2D(geom, ba, dm)
+        mf = Circle2D(0.3).to_multifab(grid)
         phi = _collect(mf, 32)
         assert phi[16, 16] < 0   # origin is inside → negative
 
@@ -76,8 +77,8 @@ class TestMultiFabGrid2D:
         from sdf2d import Circle2D, MultiFabGrid2D
         geom, ba, dm = _make_grid(n=32)
         grid = MultiFabGrid2D(geom, ba, dm)
-        mf_a = Circle2D(0.25).translate(-0.4, 0.0).fill(grid)
-        mf_b = Circle2D(0.25).translate( 0.4, 0.0).fill(grid)
+        mf_a = Circle2D(0.25).translate(-0.4, 0.0).to_multifab(grid)
+        mf_b = Circle2D(0.25).translate( 0.4, 0.0).to_multifab(grid)
         phi = _collect(grid.union(mf_a, mf_b), 32)
         assert phi[16,  8] < 0   # left circle centre
         assert phi[16, 24] < 0   # right circle centre
@@ -86,8 +87,8 @@ class TestMultiFabGrid2D:
         from sdf2d import Circle2D, MultiFabGrid2D
         geom, ba, dm = _make_grid(n=32)
         grid   = MultiFabGrid2D(geom, ba, dm)
-        base   = Circle2D(0.5).fill(grid)
-        cutter = Circle2D(0.2).fill(grid)
+        base   = Circle2D(0.5).to_multifab(grid)
+        cutter = Circle2D(0.2).to_multifab(grid)
         phi = _collect(grid.subtract(base, cutter), 32)
         assert phi[16, 16] > 0   # origin is in the hole → outside
         assert phi[16, 21] < 0   # ~(0.25, 0): inside base, outside cutter
@@ -96,8 +97,8 @@ class TestMultiFabGrid2D:
         from sdf2d import Circle2D, MultiFabGrid2D
         geom, ba, dm = _make_grid(n=32)
         grid = MultiFabGrid2D(geom, ba, dm)
-        mf_a = Circle2D(0.3).translate(-0.1, 0.0).fill(grid)
-        mf_b = Circle2D(0.3).translate( 0.1, 0.0).fill(grid)
+        mf_a = Circle2D(0.3).translate(-0.1, 0.0).to_multifab(grid)
+        mf_b = Circle2D(0.3).translate( 0.1, 0.0).to_multifab(grid)
         phi = _collect(grid.intersect(mf_a, mf_b), 32)
         assert phi[16, 16] < 0   # origin is in the overlap → inside
         assert phi[16,  4] > 0   # far left (only inside a) → outside
@@ -106,7 +107,7 @@ class TestMultiFabGrid2D:
         from sdf2d import Circle2D, MultiFabGrid2D
         geom, ba, dm = _make_grid(n=32)
         grid = MultiFabGrid2D(geom, ba, dm)
-        mf   = Circle2D(0.3).fill(grid)
+        mf   = Circle2D(0.3).to_multifab(grid)
         phi_orig = _collect(mf, 32)
         phi_neg  = _collect(grid.negate(mf), 32)
         npt.assert_allclose(phi_neg, -phi_orig)
@@ -119,6 +120,6 @@ class TestMultiFabGrid2D:
 
         # Build composite SDF using operators, then fill once
         shape = Circle2D(0.25).translate(-0.3, 0.0) | Circle2D(0.25).translate(0.3, 0.0)
-        phi = _collect(shape.fill(grid), 32)
+        phi = _collect(shape.to_multifab(grid), 32)
         assert phi[16,  8] < 0   # left circle centre
         assert phi[16, 24] < 0   # right circle centre

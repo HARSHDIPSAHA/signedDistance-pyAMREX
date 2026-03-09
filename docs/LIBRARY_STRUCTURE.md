@@ -20,7 +20,7 @@ A 2D and 3D Signed Distance Function library with STL mesh conversion and option
 - `primitives.py` — NumPy implementations of all ~50 2D SDF formulas (`sdCircle`, `sdBox2D`, …) and `opTx2D`. Re-exports everything from `_sdf_common`. No AMReX dependency.
 - `geometry.py` — All 2D geometry classes: `Circle2D`, `Box2D`, `Hexagon2D`, … Operators `|`, `-`, `/` compose shapes (union, subtraction, intersection). Transforms: `translate`, `rotate`, `scale`, `round`, `onion`. Every class wraps a lambda over `primitives` and exposes `sdf(p)`.
 - `grid.py` — `sample_levelset_2d(geom, bounds, resolution)` → `ndarray` of shape `(ny, nx)`. Also provides `save_npy`.
-- `amrex.py` — `MultiFabGrid2D`: a named grid context for AMReX `MultiFab` output. Construct once with `(geom, ba, dm)`. Use `shape.fill(grid)` to create + fill a MultiFab, or `shape.to_multifab(geom, ba, dm)` as a single-call convenience. Boolean ops on raw MultiFabs: `grid.union(a, b)`, `grid.subtract(base, cutter)`, `grid.intersect(a, b)`, `grid.negate(a)`. Requires `amrex.space2d`. Import-guarded so the module loads without AMReX.
+- `amrex.py` — `MultiFabGrid2D`: a named grid context for AMReX `MultiFab` output. Construct once with `(geom, ba, dm)`. Use `shape.to_multifab(grid)` to create + fill a MultiFab. Boolean ops on raw MultiFabs: `grid.union(a, b)`, `grid.subtract(base, cutter)`, `grid.intersect(a, b)`, `grid.negate(a)`. Requires `amrex.space2d`. Import-guarded so the module loads without AMReX.
 - `__init__.py` — Re-exports all public symbols.
 
 ---
@@ -30,7 +30,7 @@ A 2D and 3D Signed Distance Function library with STL mesh conversion and option
 - `primitives.py` — NumPy implementations of all ~30 3D SDF formulas (`sdSphere`, `sdBox`, …), smooth boolean ops (`opSmoothUnion`, …), and space-warps (`opElongate`, `opRevolution`, `opExtrusion`, `opTwist`, …). Re-exports everything from `_sdf_common`. No AMReX dependency.
 - `geometry.py` — All 3D geometry classes: `Sphere3D`, `Box3D`, `RoundBox3D`, `Cylinder3D`, `ConeExact3D`, `Torus3D`, … Operators `|`, `-`, `/` compose shapes (union, subtraction, intersection). Transforms: `translate`, `rotate_x/y/z`, `scale`, `elongate`, `round`, `onion`.
 - `grid.py` — `sample_levelset_3d(geom, bounds, resolution)` → `ndarray` of shape `(nz, ny, nx)`. Also provides `save_npy`.
-- `amrex.py` — `MultiFabGrid3D`: a named grid context for AMReX `MultiFab` output. Construct once with `(geom, ba, dm)`. Use `shape.fill(grid)` to create + fill a MultiFab, or `shape.to_multifab(geom, ba, dm)` as a single-call convenience. Boolean ops on raw MultiFabs: `grid.union(a, b)`, `grid.subtract(base, cutter)`, `grid.intersect(a, b)`, `grid.negate(a)`. Requires `amrex.space3d`. Import-guarded so the module loads without AMReX.
+- `amrex.py` — `MultiFabGrid3D`: a named grid context for AMReX `MultiFab` output. Construct once with `(geom, ba, dm)`. Use `shape.to_multifab(grid)` to create + fill a MultiFab. Boolean ops on raw MultiFabs: `grid.union(a, b)`, `grid.subtract(base, cutter)`, `grid.intersect(a, b)`, `grid.negate(a)`. Requires `amrex.space3d`. Import-guarded so the module loads without AMReX.
 - `examples/` — High-level geometry assemblies:
   - `nato_stanag.py` — `NATOFragment(…)`: NATO STANAG fragmentation cylinder with conical nose.
   - `rocket_assembly.py` — `RocketAssembly(…)`: multi-part rocket with body, nose, and fins.
@@ -116,5 +116,5 @@ Geometry classes      stl2sdf.stl_to_geometry
       Output:  NumPy ndarray  OR  AMReX MultiFab
 ```
 
-- **NumPy path** (no AMReX): `shape.to_array(bounds, resolution)` → `np.ndarray`
-- **AMReX path**: `shape.fill(MultiFabGrid2D/3D)` or `shape.to_multifab(geom, ba, dm)` → `amr.MultiFab`
+- **NumPy path** (no AMReX): `shape.to_numpy(bounds, resolution)` → `np.ndarray`
+- **AMReX path**: `shape.to_multifab(MultiFabGrid2D/3D)` → `amr.MultiFab`

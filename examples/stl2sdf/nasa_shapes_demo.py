@@ -70,7 +70,7 @@ def _process_shape(shape: dict, res: int) -> dict | None:
 
     geom = stl_to_geometry(stl_path)
     t0   = time.perf_counter()
-    phi  = geom.to_array(bounds, (res, res, res))
+    phi  = geom.to_numpy(bounds, (res, res, res))
     elapsed = time.perf_counter() - t0
 
     inside_frac = (phi < 0).mean() * 100

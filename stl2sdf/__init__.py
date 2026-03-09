@@ -10,7 +10,7 @@ Quick start
 >>>
 >>> wheel = stl_to_geometry("mars_wheel.stl")
 >>> hollowed = wheel.subtract(Sphere3D(0.3))
->>> phi = hollowed.to_array(bounds=((-1,1),(-1,1),(-1,1)), resolution=(32,32,32))
+>>> phi = hollowed.to_numpy(bounds=((-1,1),(-1,1),(-1,1)), resolution=(32,32,32))
 
 Watertight requirement
 ----------------------

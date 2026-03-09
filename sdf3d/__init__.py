@@ -10,7 +10,7 @@ Implemented features
 - Primitive shapes: Sphere, Box, RoundBox, Cylinder, ConeExact, Torus
 - Boolean operations: ``|`` (union), ``-`` (subtraction), ``/`` (intersection)
 - Transforms: translate, rotate_x/y/z, scale, elongate, round, onion
-- Grid sampling: :meth:`SDF3D.to_array`
+- Grid sampling: :meth:`SDF3D.to_numpy`
 - AMReX MultiFab output: :class:`MultiFabGrid3D` (requires pyAMReX 3-D build)
 - Example assemblies: :class:`~sdf3d.examples.NATOFragment`,
   :class:`~sdf3d.examples.RocketAssembly`
@@ -26,7 +26,7 @@ NumPy mode (no AMReX required)::
     box    = Box3D(half_size=(0.2, 0.2, 0.2)).translate(0.4, 0.0, 0.0)
     shape  = sphere | box              # union operator
 
-    phi = shape.to_array(bounds=((-1.0, 1.0), (-1.0, 1.0), (-1.0, 1.0)), resolution=(64, 64, 64))
+    phi = shape.to_numpy(bounds=((-1.0, 1.0), (-1.0, 1.0), (-1.0, 1.0)), resolution=(64, 64, 64))
 
 AMReX mode::
 
@@ -36,7 +36,7 @@ AMReX mode::
     amr.initialize([])
     # ... set up geom, ba, dm ...
     grid     = MultiFabGrid3D(geom, ba, dm)
-    mf       = Sphere3D(0.3).fill(grid)
+    mf       = Sphere3D(0.3).to_multifab(grid)
     amr.finalize()
 """
 

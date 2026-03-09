@@ -141,10 +141,10 @@ def main():
     bounds = ((-0.05, 0.05), (-0.05, 0.05))
     
     # We use a 300x300 sampling grid. You can increase this for higher resolution!
-    phi_union = scene_union.to_array(bounds=bounds, resolution=(300, 300))
+    phi_union = scene_union.to_numpy(bounds=bounds, resolution=(300, 300))
     save_visuals(phi_union, bounds, "prof_proof_UNION", "2D Union: Image + Circle")
 
-    phi_diff = scene_diff.to_array(bounds=bounds, resolution=(300, 300))
+    phi_diff = scene_diff.to_numpy(bounds=bounds, resolution=(300, 300))
     save_visuals(phi_diff, bounds, "prof_proof_SUBTRACTION", "2D Subtraction: Image - Circle")
 
 if __name__ == "__main__":

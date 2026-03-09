@@ -34,7 +34,7 @@ sphere = Sphere3D(radius=0.3)
 box    = Box3D(half_size=(0.2, 0.2, 0.2)).translate(0.4, 0.0, 0.0)
 shape  = sphere | box              # union operator
 
-phi = shape.to_array(bounds=((-1,1),(-1,1),(-1,1)), resolution=(64,64,64))
+phi = shape.to_numpy(bounds=((-1,1),(-1,1),(-1,1)), resolution=(64,64,64))
 # phi.shape == (64, 64, 64);  phi < 0 inside, phi > 0 outside
 ```
 
@@ -52,13 +52,10 @@ try:
     ba       = amr.BoxArray(domain); ba.max_size(32)
     dm       = amr.DistributionMapping(ba)
 
-    # Single shape — convenience wrapper
-    mf = Sphere3D(0.3).to_multifab(geom, ba, dm)
-
-    # Multiple shapes — named grid context
+    # Grid context — use it for all fills and boolean ops
     grid = MultiFabGrid3D(geom, ba, dm)
-    mf_a = Sphere3D(0.3).fill(grid)
-    mf_b = Box3D((0.2, 0.2, 0.2)).fill(grid)
+    mf_a = Sphere3D(0.3).to_multifab(grid)
+    mf_b = Box3D((0.2, 0.2, 0.2)).to_multifab(grid)
     mf_u = grid.union(mf_a, mf_b)
 finally:
     amr.finalize()
@@ -194,26 +191,16 @@ grid layout; all fill and boolean operations go through it.
 from sdf2d import MultiFabGrid2D, Circle2D, Box2D
 import amrex.space2d as amr
 
-# Convenience: single shape → MultiFab
-mf = Circle2D(0.3).to_multifab(geom, ba, dm)
-
-# Named grid context: fill + combine multiple shapes
+# Grid context — use it for all fills and boolean ops
 grid   = MultiFabGrid2D(geom, ba, dm)
-mf_c   = Circle2D(0.3).fill(grid)      # create + fill a new MultiFab
-mf_b   = Box2D((0.2, 0.3)).fill(grid)
+mf_c   = Circle2D(0.3).to_multifab(grid)
+mf_b   = Box2D((0.2, 0.3)).to_multifab(grid)
 
 # Boolean operations on MultiFabs (element-wise on already-filled grids)
 mf_u = grid.union(mf_c, mf_b)          # min(c, b)
 mf_s = grid.subtract(mf_b, mf_c)       # box with circle carved out
 mf_i = grid.intersect(mf_c, mf_b)      # max(c, b)
 mf_n = grid.negate(mf_c)               # flip sign
-```
-
-Lower-level access (rarely needed):
-
-```python
-mf = grid.create_multifab()            # allocate empty MultiFab
-grid.fill_multifab(mf, circle.sdf)     # fill with any callable sdf(p)
 ```
 
 ## 3D API — `sdf3d`
@@ -334,26 +321,16 @@ grid layout; all fill and boolean operations go through it.
 from sdf3d import MultiFabGrid3D, Sphere3D, Box3D
 import amrex.space3d as amr
 
-# Convenience: single shape → MultiFab
-mf = Sphere3D(0.3).to_multifab(geom, ba, dm)
-
-# Named grid context: fill + combine multiple shapes
+# Grid context — use it for all fills and boolean ops
 grid   = MultiFabGrid3D(geom, ba, dm)
-mf_s   = Sphere3D(0.3).fill(grid)       # create + fill a new MultiFab
-mf_b   = Box3D((0.2, 0.2, 0.2)).fill(grid)
+mf_s   = Sphere3D(0.3).to_multifab(grid)
+mf_b   = Box3D((0.2, 0.2, 0.2)).to_multifab(grid)
 
 # Boolean operations on MultiFabs (element-wise on already-filled grids)
 mf_u = grid.union(mf_s, mf_b)           # min(s, b)
 mf_s = grid.subtract(mf_b, mf_s)        # box with sphere carved out
 mf_i = grid.intersect(mf_s, mf_b)       # max(s, b)
 mf_n = grid.negate(mf_s)                # flip sign
-```
-
-Lower-level access (rarely needed):
-
-```python
-mf = grid.create_multifab()             # allocate empty MultiFab
-grid.fill_multifab(mf, sphere.sdf)      # fill with any callable sdf(p)
 ```
 
 ## STL → SDF — `stl2sdf`
@@ -416,13 +393,10 @@ try:
 
     from sdf3d import Sphere3D, Box3D, MultiFabGrid3D
 
-    # Single shape (convenience)
-    mf = Sphere3D(0.3).to_multifab(geom, ba, dm)
-
-    # Multiple shapes with grid-level boolean ops
+    # Grid context — use it for all fills and boolean ops
     grid = MultiFabGrid3D(geom, ba, dm)
-    mf_s = Sphere3D(0.3).fill(grid)
-    mf_b = Box3D((0.2, 0.2, 0.2)).fill(grid)
+    mf_s = Sphere3D(0.3).to_multifab(grid)
+    mf_b = Box3D((0.2, 0.2, 0.2)).to_multifab(grid)
     mf_u = grid.union(mf_s, mf_b)
 
     varnames = amr.Vector_string(["phi"])

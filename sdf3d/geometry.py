@@ -7,18 +7,16 @@ from collections.abc import Callable, Sequence
 from typing import TypeAlias
 
 import numpy as np
-import numpy.typing as npt
 
 from . import primitives as sdf
 from .primitives import Points3D, Distances
 
 SDFFunc: TypeAlias = Callable[[Points3D], Distances]
-_Array: TypeAlias = npt.NDArray[np.floating]
 _Bounds3D = tuple[tuple[float, float], tuple[float, float], tuple[float, float]]
 _Resolution3D = tuple[int, int, int]
 
 
-def save_npy(path: str, phi: _Array) -> None:
+def save_npy(path: str, phi: np.ndarray) -> None:
     """Save *phi* array to *path* (creates parent directories if needed)."""
     out_dir = os.path.dirname(path)
     if out_dir:
@@ -135,7 +133,7 @@ class SDF3D:
     # Grid and AMReX output
     # ------------------------------------------------------------------
 
-    def to_array(self, bounds: _Bounds3D, resolution: _Resolution3D) -> _Array:
+    def to_numpy(self, bounds: _Bounds3D, resolution: _Resolution3D) -> np.ndarray:
         """Sample this SDF on a uniform 3-D cell-centred grid.
 
         Parameters
@@ -159,38 +157,47 @@ class SDF3D:
         p = np.stack([X, Y, Z], axis=-1)
         return self.sdf(p)
 
-    def fill(self, grid) -> "amr.MultiFab":
-        """Fill *grid* with this SDF and return a raw ``amrex.space3d.MultiFab``.
+    def to_multifab(self, grid) -> "amr.MultiFab":
+        """Evaluate this SDF on *grid* and return a filled MultiFab.
 
         Parameters
         ----------
         grid:
-            A :class:`~sdf3d.amrex.MultiFabGrid3D` instance that defines the
-            domain layout (geom, ba, dm).
+            A :class:`~sdf3d.amrex.MultiFabGrid3D` instance.
 
         Returns
         -------
         amrex.space3d.MultiFab
-            A single-component MultiFab filled with signed distance values.
         """
-        mf = grid.create_multifab()
-        grid.fill_multifab(mf, self.sdf)
+        import amrex.space3d as amr
+        from . import primitives as _sdf
+
+        dx = grid.geom.data().CellSize()
+        if hasattr(grid.geom, "ProbLoArray"):
+            prob_lo = grid.geom.ProbLoArray()
+        elif hasattr(grid.geom, "ProbLo"):
+            prob_lo = np.array(grid.geom.ProbLo())
+        else:
+            raise AttributeError("Geometry has no ProbLoArray/ProbLo accessor")
+
+        mf = amr.MultiFab(grid.ba, grid.dm, 1, 0)
+        for mfi in mf:
+            arr = mf.array(mfi).to_numpy()
+            bx  = mfi.validbox()
+            i_lo, j_lo, k_lo = bx.lo_vect
+            i_hi, j_hi, k_hi = bx.hi_vect
+
+            i = np.arange(i_lo, i_hi + 1)
+            j = np.arange(j_lo, j_hi + 1)
+            k = np.arange(k_lo, k_hi + 1)
+            x = (i + 0.5) * dx[0] + prob_lo[0]
+            y = (j + 0.5) * dx[1] + prob_lo[1]
+            z = (k + 0.5) * dx[2] + prob_lo[2]
+            Z, Y, X = np.meshgrid(z, y, x, indexing="ij")
+
+            view = arr[:, :, :, 0] if arr.ndim == 4 else arr[:, :, :, 0, 0]
+            view[...] = self.sdf(_sdf.vec3(X, Y, Z))
         return mf
-
-    def to_multifab(self, amrex_geom, ba, dm) -> "amr.MultiFab":
-        """Convenience: create a :class:`~sdf3d.amrex.MultiFabGrid3D` and fill.
-
-        Equivalent to::
-
-            grid = MultiFabGrid3D(amrex_geom, ba, dm)
-            mf   = shape.fill(grid)
-
-        Returns
-        -------
-        amrex.space3d.MultiFab
-        """
-        from .amrex import MultiFabGrid3D
-        return self.fill(MultiFabGrid3D(amrex_geom, ba, dm))
 
     # ------------------------------------------------------------------
     # Visualisation helpers
@@ -239,7 +246,7 @@ class SDF3D:
             print(f"  save_png: {exc} — skipping")
             return
 
-        phi = self.to_array(bounds, resolution)
+        phi = self.to_numpy(bounds, resolution)
         if phi.min() >= 0 or phi.max() <= 0:
             print(f"  save_png: no zero crossing — skipping {path.name}")
             return
@@ -448,7 +455,7 @@ def save_plotly_html_grid(
         nx, ny, nz = resolution
         (x0, x1), (y0, y1), (z0, z1) = panel_bounds
 
-        phi = geom.to_array(panel_bounds, resolution)
+        phi = geom.to_numpy(panel_bounds, resolution)
 
         xs = np.linspace(x0, x1, nx)
         ys = np.linspace(y0, y1, ny)

@@ -3,7 +3,7 @@
 It has two modes of operation:
 - **Pure numpy** (no external dependencies beyond numpy): evaluate SDFs on grids
   using `sample_levelset_2d` / `sample_levelset_3d`.
-- **AMReX** (optional): fill `MultiFab` grids via `shape.to_multifab(geom, ba, dm)`.
+- **AMReX** (optional): fill `MultiFab` grids via `shape.to_multifab(grid)`.
 
 ## Repository layout
 ```

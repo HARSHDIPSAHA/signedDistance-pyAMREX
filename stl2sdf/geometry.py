@@ -41,7 +41,7 @@ def stl_to_geometry(
     >>> from sdf3d import Sphere3D
     >>> wheel = stl_to_geometry("mars_wheel.stl")
     >>> combined = wheel.union(Sphere3D(0.3).translate(0.5, 0, 0))
-    >>> phi = combined.to_array(bounds=((-1,1),(-1,1),(-1,1)), resolution=(32,32,32))
+    >>> phi = combined.to_numpy(bounds=((-1,1),(-1,1),(-1,1)), resolution=(32,32,32))
     """
     from pysdf import SDF  # lazy import: clear ImportError if pysdf is missing
 

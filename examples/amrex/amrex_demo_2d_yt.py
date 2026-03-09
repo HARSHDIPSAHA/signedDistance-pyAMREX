@@ -1,5 +1,5 @@
 """2D AMReX SDF demo.
-    MultiFabGrid2D → shape.fill(grid) → write_single_level_plotfile
+    MultiFabGrid2D → shape.to_multifab(grid) → write_single_level_plotfile
     → yt.load → SlicePlot → PNG
 
 Run with:
@@ -37,10 +37,10 @@ grid = MultiFabGrid2D(geom, ba, dm)
 # ---------------------------------------------------------------------------
 # Build MultiFabs — fill each shape on the shared grid
 # ---------------------------------------------------------------------------
-mf_circle      = Circle2D(0.5).fill(grid)
-mf_box         = Box2D((0.4, 0.3)).fill(grid)
-mf_rounded_box = RoundedBox2D((0.4, 0.3), 0.1).fill(grid)
-mf_hexagon     = Hexagon2D(0.4).fill(grid)
+mf_circle      = Circle2D(0.5).to_multifab(grid)
+mf_box         = Box2D((0.4, 0.3)).to_multifab(grid)
+mf_rounded_box = RoundedBox2D((0.4, 0.3), 0.1).to_multifab(grid)
+mf_hexagon     = Hexagon2D(0.4).to_multifab(grid)
 mf_union       = grid.union(mf_circle, mf_box)
 mf_subtract    = grid.subtract(mf_box, mf_circle)   # box with circle carved out
 

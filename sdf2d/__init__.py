@@ -10,7 +10,7 @@ Implemented features
 - Primitive shapes: Circle, Box, triangles, polygons, stars, arcs, ...
 - Boolean operations: ``|`` (union), ``-`` (subtraction), ``/`` (intersection)
 - Transforms: translate, rotate, scale, round, onion
-- Grid sampling: :meth:`SDF2D.to_array`
+- Grid sampling: :meth:`SDF2D.to_numpy`
 - AMReX MultiFab output: :class:`MultiFabGrid2D` (requires pyAMReX 2-D build)
 
 Quick start
@@ -24,7 +24,7 @@ NumPy mode (no AMReX required)::
     box    = Box2D(half_size=(0.2, 0.2)).translate(0.4, 0.0)
     shape  = circle | box              # union operator
 
-    phi = shape.to_array(bounds=((-1.0, 1.0), (-1.0, 1.0)), resolution=(512, 512))
+    phi = shape.to_numpy(bounds=((-1.0, 1.0), (-1.0, 1.0)), resolution=(512, 512))
 
 AMReX mode::
 
@@ -34,7 +34,7 @@ AMReX mode::
     amr.initialize([])
     # ... set up geom, ba, dm ...
     grid     = MultiFabGrid2D(geom, ba, dm)
-    mf       = Circle2D(0.3).fill(grid)
+    mf       = Circle2D(0.3).to_multifab(grid)
     amr.finalize()
 """
 

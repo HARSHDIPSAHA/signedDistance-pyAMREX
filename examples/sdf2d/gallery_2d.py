@@ -107,7 +107,7 @@ def render_gallery(shapes: list[tuple[str, SDF2D]], out_path: Path, ncols: int =
     axes = np.asarray(axes).ravel()
 
     for ax, (label, geom) in zip(axes, shapes):
-        phi = geom.to_array(_BOUNDS, _RES)
+        phi = geom.to_numpy(_BOUNDS, _RES)
         ax.set_facecolor("#111111")
         ax.set_xticks([])
         ax.set_yticks([])

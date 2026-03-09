@@ -1,6 +1,6 @@
 """3D AMReX SDF demo.
 
-    MultiFabGrid3D → shape.fill(grid) → write_single_level_plotfile
+    MultiFabGrid3D → shape.to_multifab(grid) → write_single_level_plotfile
     → yt (SurfaceSource or marching-cubes fallback) → PNG
 
 Run with:
@@ -41,9 +41,9 @@ grid = MultiFabGrid3D(geom, ba, dm)
 # ---------------------------------------------------------------------------
 # Build MultiFabs — fill each shape on the shared grid
 # ---------------------------------------------------------------------------
-mf_sphere    = Sphere3D(0.3).fill(grid)
-mf_box       = Box3D((0.25, 0.2, 0.15)).fill(grid)
-mf_round_box = RoundBox3D((0.25, 0.2, 0.15), 0.05).fill(grid)
+mf_sphere    = Sphere3D(0.3).to_multifab(grid)
+mf_box       = Box3D((0.25, 0.2, 0.15)).to_multifab(grid)
+mf_round_box = RoundBox3D((0.25, 0.2, 0.15), 0.05).to_multifab(grid)
 mf_union     = grid.union(mf_sphere, mf_box)
 mf_subtract  = grid.subtract(mf_box, mf_sphere)   # box with sphere carved out
 

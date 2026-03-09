@@ -62,13 +62,14 @@ class TestMultiFabGrid3D:
         from sdf3d import Sphere3D, MultiFabGrid3D
         geom, ba, dm = _make_grid(n=16)
         grid = MultiFabGrid3D(geom, ba, dm)
-        mf = Sphere3D(0.4).fill(grid)
+        mf = Sphere3D(0.4).to_multifab(grid)
         assert hasattr(mf, "array")
 
     def test_to_multifab_convenience(self):
-        from sdf3d import Sphere3D
+        from sdf3d import Sphere3D, MultiFabGrid3D
         geom, ba, dm = _make_grid(n=16)
-        mf = Sphere3D(0.3).to_multifab(geom, ba, dm)
+        grid = MultiFabGrid3D(geom, ba, dm)
+        mf = Sphere3D(0.3).to_multifab(grid)
         phi = _collect(mf, 16)
         assert phi[8, 8, 8] < 0   # origin is inside → negative
 
@@ -76,8 +77,8 @@ class TestMultiFabGrid3D:
         from sdf3d import Sphere3D, MultiFabGrid3D
         geom, ba, dm = _make_grid(n=16)
         grid = MultiFabGrid3D(geom, ba, dm)
-        mf_a = Sphere3D(0.2).translate(-0.4, 0.0, 0.0).fill(grid)
-        mf_b = Sphere3D(0.2).translate( 0.4, 0.0, 0.0).fill(grid)
+        mf_a = Sphere3D(0.2).translate(-0.4, 0.0, 0.0).to_multifab(grid)
+        mf_b = Sphere3D(0.2).translate( 0.4, 0.0, 0.0).to_multifab(grid)
         phi = _collect(grid.union(mf_a, mf_b), 16)
         assert phi[8, 8,  4] < 0   # left sphere centre
         assert phi[8, 8, 12] < 0   # right sphere centre
@@ -86,8 +87,8 @@ class TestMultiFabGrid3D:
         from sdf3d import Sphere3D, MultiFabGrid3D
         geom, ba, dm = _make_grid(n=16)
         grid   = MultiFabGrid3D(geom, ba, dm)
-        base   = Sphere3D(0.5).fill(grid)
-        cutter = Sphere3D(0.2).fill(grid)
+        base   = Sphere3D(0.5).to_multifab(grid)
+        cutter = Sphere3D(0.2).to_multifab(grid)
         phi = _collect(grid.subtract(base, cutter), 16)
         assert phi[8, 8, 8] > 0   # origin is in the hole → outside
 
@@ -95,8 +96,8 @@ class TestMultiFabGrid3D:
         from sdf3d import Sphere3D, MultiFabGrid3D
         geom, ba, dm = _make_grid(n=16)
         grid = MultiFabGrid3D(geom, ba, dm)
-        mf_a = Sphere3D(0.3).translate(-0.1, 0.0, 0.0).fill(grid)
-        mf_b = Sphere3D(0.3).translate( 0.1, 0.0, 0.0).fill(grid)
+        mf_a = Sphere3D(0.3).translate(-0.1, 0.0, 0.0).to_multifab(grid)
+        mf_b = Sphere3D(0.3).translate( 0.1, 0.0, 0.0).to_multifab(grid)
         phi = _collect(grid.intersect(mf_a, mf_b), 16)
         assert phi[8, 8, 8] < 0   # overlap region → inside
         assert phi[8, 8, 2] > 0   # far left (only inside a) → outside
@@ -108,6 +109,6 @@ class TestMultiFabGrid3D:
         grid = MultiFabGrid3D(geom, ba, dm)
 
         shape = Sphere3D(0.2).translate(-0.4, 0.0, 0.0) | Sphere3D(0.2).translate(0.4, 0.0, 0.0)
-        phi = _collect(shape.fill(grid), 16)
+        phi = _collect(shape.to_multifab(grid), 16)
         assert phi[8, 8,  4] < 0   # left sphere centre
         assert phi[8, 8, 12] < 0   # right sphere centre
