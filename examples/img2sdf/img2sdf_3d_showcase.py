@@ -63,26 +63,45 @@ def _header(n, title):
     print('='*60)
 
 
-def _isosurface_div(phi, title, color, div_id, N=48):
-    from scipy.ndimage import zoom as _zoom
-    # Downsample to 32³ for lighter HTML output
-    vis_n = 32
-    scale = vis_n / phi.shape[0]
-    phi_vis = _zoom(phi, scale, order=1) if scale != 1.0 else phi
-    xs = np.linspace(0, N, vis_n)
-    ys = np.linspace(0, N, vis_n)
-    zs = np.linspace(0, N, vis_n)
-    Z3, Y3, X3 = np.meshgrid(zs, ys, xs, indexing="ij")
-    fig = go.Figure(go.Isosurface(
-        x=X3.ravel(), y=Y3.ravel(), z=Z3.ravel(),
-        value=phi_vis.ravel(),
-        isomin=0.0, isomax=0.0, surface_count=1,
-        colorscale=[[0, color], [1, color]],
-        showscale=False,
-        caps=dict(x_show=False, y_show=False, z_show=False),
+def _mesh3d_from_phi(phi, color, N_grid, vis_n=32):
+    """Extract zero-isosurface via marching cubes → go.Mesh3d.
+
+    go.Mesh3d with explicit triangles always renders in the browser, unlike
+    go.Isosurface which silently fails when data is served via the CDN bundle.
+
+    Parameters
+    ----------
+    phi:    3-D SDF array (phi < 0 inside).
+    color:  CSS hex colour for the mesh.
+    N_grid: original grid side-length (used for axis scaling).
+    vis_n:  target grid size after downsampling (default 32³ ≈ 32k triangles max).
+    """
+    from skimage.measure import marching_cubes
+    from scipy.ndimage import zoom
+    if phi.min() >= 0.0 or phi.max() <= 0.0:
+        return go.Mesh3d(x=[0], y=[0], z=[0], i=[0], j=[0], k=[0],
+                         opacity=0, showscale=False)
+    # Downsample large grids to keep HTML file size manageable
+    if phi.shape[0] > vis_n:
+        scale = vis_n / phi.shape[0]
+        phi = zoom(phi, scale, order=1)
+    verts, faces, _, _ = marching_cubes(phi, level=0.0, spacing=(1.0, 1.0, 1.0))
+    # marching_cubes returns (axis0, axis1, axis2) = (z, y, x); assign to Plotly axes
+    x_mc, y_mc, z_mc = verts[:, 2], verts[:, 1], verts[:, 0]
+    return go.Mesh3d(
+        x=x_mc, y=y_mc, z=z_mc,
+        i=faces[:, 0], j=faces[:, 1], k=faces[:, 2],
+        color=color,
+        opacity=1.0,
+        flatshading=False,
         lighting=dict(ambient=0.5, diffuse=0.8, specular=0.4, roughness=0.3),
         lightposition=dict(x=1000, y=1000, z=2000),
-    ))
+        showscale=False,
+    )
+
+
+def _isosurface_div(phi, title, color, div_id, N=48):
+    fig = go.Figure(_mesh3d_from_phi(phi, color, N))
     fig.update_layout(
         title=dict(text=title, font=dict(color="#e0e0e0", size=13), x=0.5),
         paper_bgcolor=DARK, height=340, width=360,
@@ -96,7 +115,7 @@ def _isosurface_div(phi, title, color, div_id, N=48):
     return fig.to_html(include_plotlyjs=False, full_html=False, div_id=div_id)
 
 
-def _sample_to_phi(geom, bounds, res=48):
+def _sample_to_phi(geom, bounds, res=32):
     """Sample a Geometry3D to a phi grid for visualisation."""
     from sdf3d.grid import sample_levelset_3d
     return sample_levelset_3d(geom, bounds, (res, res, res))

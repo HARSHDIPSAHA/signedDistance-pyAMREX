@@ -32,7 +32,7 @@ except ImportError:
     raise ImportError("Install plotly: pip install plotly")
 
 try:
-    from skimage.measure import marching_cubes  # noqa: F401 — verify available
+    from skimage.measure import marching_cubes
 except ImportError:
     raise ImportError("Install scikit-image: pip install scikit-image")
 
@@ -125,32 +125,47 @@ def _scene_cfg():
     )
 
 
-def _iso_figure(phi, title, color, vis_n=32):
-    """Downsample phi to vis_n³ for lightweight HTML visualisation."""
-    from scipy.ndimage import zoom
-    scale = vis_n / phi.shape[0]
-    phi_vis = zoom(phi, scale, order=1) if scale != 1.0 else phi
-    xs = np.linspace(0, N, vis_n)
-    ys = np.linspace(0, N, vis_n)
-    zs = np.linspace(0, N, vis_n)
-    Z3, Y3, X3 = np.meshgrid(zs, ys, xs, indexing="ij")
-    trace = go.Isosurface(
-        x=X3.ravel(), y=Y3.ravel(), z=Z3.ravel(),
-        value=phi_vis.ravel(),
-        isomin=0.0, isomax=0.0, surface_count=1,
-        colorscale=[[0, color], [1, color]],
-        showscale=False,
-        caps=dict(x_show=False, y_show=False, z_show=False),
+def _mesh3d_from_phi(phi, color):
+    """Extract zero-isosurface with marching cubes and return a go.Mesh3d trace.
+
+    Using go.Mesh3d (triangulated surface from marching cubes) instead of
+    go.Isosurface avoids the silent rendering failure that Isosurface can
+    exhibit when data is loaded via the Plotly CDN bundle.
+    """
+    if phi.min() >= 0.0 or phi.max() <= 0.0:
+        # Degenerate case: no zero-crossing — return an invisible dummy trace
+        return go.Mesh3d(x=[0], y=[0], z=[0], i=[0], j=[0], k=[0],
+                         opacity=0, showscale=False)
+    verts, faces, normals, _ = marching_cubes(phi, level=0.0, spacing=(1.0, 1.0, 1.0))
+    # marching_cubes returns (axis0, axis1, axis2) = (z, y, x); assign to Plotly axes
+    x_mc, y_mc, z_mc = verts[:, 2], verts[:, 1], verts[:, 0]
+    return go.Mesh3d(
+        x=x_mc, y=y_mc, z=z_mc,
+        i=faces[:, 0], j=faces[:, 1], k=faces[:, 2],
+        color=color,
+        opacity=1.0,
+        flatshading=False,
         lighting=dict(ambient=0.5, diffuse=0.8, specular=0.4, roughness=0.3),
         lightposition=dict(x=1000, y=1000, z=2000),
+        showscale=False,
     )
-    fig = go.Figure(trace)
+
+
+_iso_div_counter = 0
+
+
+def _iso_figure(phi, title, color):
+    """Render a shape's zero-isosurface as an interactive Plotly HTML snippet."""
+    global _iso_div_counter
+    _iso_div_counter += 1
+    fig = go.Figure(_mesh3d_from_phi(phi, color))
     fig.update_layout(
         title=dict(text=title, font=dict(color="#e0e0e0", size=14), x=0.5),
         paper_bgcolor=DARK, height=350, width=350,
         scene=_scene_cfg(),
     )
-    return fig.to_html(include_plotlyjs=False, full_html=False, div_id=f"iso_{title[:6]}")
+    return fig.to_html(include_plotlyjs=False, full_html=False,
+                       div_id=f"iso_{_iso_div_counter}")
 
 
 # ===========================================================================
