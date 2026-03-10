@@ -76,7 +76,7 @@ def _header(n, title):
     print('='*60)
 
 
-def _mesh3d_trace(phi, color, vis_n=32):
+def _mesh3d_trace(phi, color, vis_n=48):
     """Extract zero-isosurface via marching cubes → go.Mesh3d.
 
     Parameters
@@ -92,7 +92,7 @@ def _mesh3d_trace(phi, color, vis_n=32):
         scale = vis_n / phi.shape[0]
         phi = zoom(phi, scale, order=1)
     # Smooth the phi field to remove noise from Chan-Vese segmentation
-    phi = gaussian_filter(phi, sigma=1.5)
+    phi = gaussian_filter(phi, sigma=2.5)
     verts, faces, _, _ = marching_cubes(phi, level=0.0, spacing=(1.0, 1.0, 1.0))
     # marching_cubes returns (axis0=z, axis1=y, axis2=x); map to Plotly (x, y, z)
     x_mc, y_mc, z_mc = verts[:, 2], verts[:, 1], verts[:, 0]
@@ -153,7 +153,7 @@ w = np.arange(W)[None, None, :]
 dist = np.sqrt((d - cz)**2 + (h - cy)**2 + (w - cx)**2)
 RADIUS = 14.0
 clean_volume = np.where(dist <= RADIUS, 0.8, 0.1)
-volume = clean_volume + 0.05 * rng.standard_normal((D, H, W))
+volume = clean_volume + 0.02 * rng.standard_normal((D, H, W))
 volume = np.clip(volume, 0, 1)
 
 _print(f"Volume shape: {volume.shape}  min={volume.min():.3f}  max={volume.max():.3f}")
