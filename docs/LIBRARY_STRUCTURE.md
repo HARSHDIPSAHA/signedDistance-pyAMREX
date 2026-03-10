@@ -8,6 +8,7 @@ A 2D and 3D Signed Distance Function library with STL mesh conversion and option
 - `sdf2d/` — 2D geometry package.
 - `sdf3d/` — 3D geometry package.
 - `stl2sdf/` — STL mesh → SDF package (pure NumPy).
+- `img2sdf/` — Image → SDF package (uSCMAN Chan-Vese pipeline integrated).
 - `tests/` — pytest suite; no AMReX required (`test_amrex.py` skips automatically).
 - `scripts/` — Gallery and plotfile rendering utilities (not part of the library API).
 - `examples/` — Standalone runnable demos; outputs written to this folder.
@@ -56,6 +57,28 @@ Requires a **watertight** (closed, 2-manifold) mesh for correct sign determinati
 
 ---
 
+### `img2sdf/` contents
+
+Converts raw images (PNG, JPG, TIFF, HDF5) into signed distance fields via the
+uSCMAN Chan-Vese segmentation pipeline. Output plugs into the pySdf CSG tree as
+an `ImageGeometry2D` (2D) or `ImageExtruded3D` (3D).
+
+> **Sign convention:** uSCMAN uses φ > 0 inside; pySdf uses φ < 0 inside.
+> The negation is applied automatically in `grid.py` and `image_leaf.py`.
+
+- `_pipeline.py` — Orchestrator; replaces uSCMAN's `Analysis.py`. Chains preprocessing → morphometry → segmentation.
+- `geometry.py` — `ImageGeometry2D(phi, bounds, image_path=None)`: `Geometry2D` subclass backed by a `RegularGridInterpolator`.
+- `grid.py` — `image_to_levelset_2d(image_path, params, *, levelset_index=0)` → `ndarray`; `image_to_geometry_2d(...)` → `ImageGeometry2D`.
+- `amrex.py` — `SDFLibraryImg2D(geom, ba, dm)`: runs the NumPy pipeline then delegates to `sdf2d.amrex.SDFLibrary2D.from_geometry()`.
+- `image_leaf.py` — `ImageExtruded3D(hdf5_path, dataset_path, physical_size_xy, thickness_z)`: extrudes a 2D HDF5 SDF into a `Geometry3D` node.
+- `segmentation/` — Chan-Vese solver: `cv_single.py` (single-phase), `cv_multi.py` (multiphase).
+- `morphometry/` — Morphometric analysis helpers.
+- `preprocessing/` — Image preprocessing (normalisation, filtering).
+- `io/` — HDF5 I/O helpers.
+- `__init__.py` — Re-exports `ImageGeometry2D`, `image_to_levelset_2d`, `image_to_geometry_2d`, `SDFLibraryImg2D`.
+
+---
+
 ### `tests/` contents
 
 All tests pass with `pytest` and require only `numpy`. AMReX is not needed.
@@ -98,22 +121,24 @@ Standalone runnable demos. Outputs (PNG, HTML, NPY) are written to `examples/`.
 | `sdf3d/complex_example.py` | Chains all four operations, one PNG per step |
 | `stl2sdf/nasa_shapes_demo.py` | Downloads 4 NASA meshes (Orion/CubeSat/wheel/Eros), saves Plotly HTML report |
 | `stl2sdf/nasa_boolean_demo.py` | Boolean ops demo: mesh union/subtract with analytic sphere |
+| `img2sdf/Example_heds.py` | HEDS image → SDF, union/intersect with translated circle, saves PNGs |
+| `img2sdf/MULTIPHASE_TEST.py` | Multiphase Chan-Vese segmentation, boolean ops, saves PNGs |
 
 ### Design
 
 ```
-User parameters          STL file
-      ↓                     ↓
-Geometry classes      stl2sdf.stl_to_geometry
-(sdf2d / sdf3d)             ↓
-      └──────── SDF3D ───────┘
-                    ↓
-            SDF evaluation
-            (primitives.py)
-                    ↓
-      Level-set field   φ(x, y[, z]) on a grid
-                    ↓
-      Output:  NumPy ndarray  OR  AMReX MultiFab
+User parameters          STL file          Image file
+      ↓                     ↓                  ↓
+Geometry classes      stl2sdf.stl_to_geometry  img2sdf.image_to_geometry_2d
+(sdf2d / sdf3d)             ↓                  ↓
+      └───────────── SDF2D / SDF3D ────────────┘
+                        ↓
+                  SDF evaluation
+                  (primitives.py / RegularGridInterpolator)
+                        ↓
+            Level-set field   φ(x, y[, z]) on a grid
+                        ↓
+            Output:  NumPy ndarray  OR  AMReX MultiFab
 ```
 
 - **NumPy path** (no AMReX): `shape.to_numpy(bounds, resolution)` → `np.ndarray`

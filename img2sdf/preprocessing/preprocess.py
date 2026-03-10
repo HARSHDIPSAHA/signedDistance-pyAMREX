@@ -292,15 +292,27 @@ def preprocessImage(image_obj, Inputs):
         print(f'Completed multilevel Otsu thresholding for {name}')
 
         # Identify binder
-        binder = blurred >= T[-2]
+        # Identify binder
+        if len(T) < 2:
+            threshold = T[-1]
+        else:
+            threshold = T[-2]
+        
+        binder = blurred >= threshold
         clustered[binder] = 255
         print(f'Identified binder regions for {name}')
         
-        # Identify crystal
+        # Identify crystals
         print(f'Identifying crystals for {name}')
-        crystal = np.logical_not(np.logical_or(defect,binder))
-        clustered[crystal] = 128
+        crystal = np.logical_not(np.logical_or(defect, binder))
+        clustered[crystal] = 170
         print(f'Identified crystals for {name}')
+        
+        # Ensure 4 distinct phases (required by multiphase Chan-Vese)
+        clustered[defect] = 0
+        clustered[crystal] = 85
+        clustered[binder] = 170
+        clustered[~(defect | crystal | binder)] = 255
 
     # Switch values if image is generated via HEDS
     switch_values = Inputs["Preprocessing Properties"]["Threshold HEDS"]

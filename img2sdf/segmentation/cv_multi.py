@@ -202,10 +202,21 @@ def _cv_reset_level_set(phi, xp, tau=0.6):
 
 def _cv_init_level_set(image, xp, dtype):
     # Determine the number of unique values in the image
+
     unique = xp.unique(image)
     num_unique = len(unique)
-    assert num_unique in [2, 4]
-
+    
+    # Allow 3-phase images by expanding them to 4 regions
+    if num_unique == 3:
+        # duplicate the middle value so algorithm still works
+        unique = xp.array([unique[0], unique[1], unique[1], unique[2]])
+        num_unique = 4
+    
+    if num_unique not in [2, 4]:
+        raise ValueError(f"Expected 2 or 4 phases but got {num_unique}")
+        
+    
+    
     # Determine min value
     minval = xp.amin(image)
     maxval = xp.amax(image)

@@ -18,7 +18,8 @@
 | Transforms (translate, rotate, scale, round, onion, elongate) | both packages |
 | Grid sampling to NumPy arrays | `sdf2d.grid`, `sdf3d.grid` |
 | STL mesh → SDF grid | `stl2sdf` |
-| AMReX MultiFab output | `sdf2d.amrex`, `sdf3d.amrex` |
+| Image → SDF via Chan-Vese segmentation | `img2sdf` |
+| AMReX MultiFab output | `sdf2d.amrex`, `sdf3d.amrex`, `img2sdf.amrex` |
 | Complex assemblies | `sdf3d.examples` (`NATOFragment`, `RocketAssembly`) |
 | Comprehensive unit tests | `tests/` |
 
@@ -373,6 +374,103 @@ uv run python examples/stl2sdf/nasa_shapes_demo.py --res 30  # higher quality
 uv run python examples/stl2sdf/nasa_shapes_demo.py --skip-eros  # skip 200K-tri Eros
 uv run python examples/stl2sdf/nasa_boolean_demo.py          # mesh union/subtract with sphere
 ```
+
+## Image → SDF — `img2sdf`
+
+Converts microscopy/X-ray images into a `Geometry2D` object via the uSCMAN
+Chan-Vese segmentation pipeline (pure NumPy).
+
+> **Sign convention:** uSCMAN outputs φ > 0 inside; pySdf uses φ < 0 inside.
+> The negation is applied automatically — no manual adjustment needed.
+
+```python
+from img2sdf import image_to_geometry_2d, image_to_levelset_2d, ImageGeometry2D
+```
+
+### `ImageGeometry2D`
+
+```python
+ImageGeometry2D(phi, bounds, image_path=None)
+```
+
+A `Geometry2D` subclass backed by a bilinearly interpolated level-set field.
+Supports all `Geometry2D` methods: `.translate()`, `.rotate()`, `.scale()`,
+`.union()`, `.subtract()`, `.intersect()`, `.round()`, `.onion()`.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `phi` | `ndarray (ny, nx)` | Level-set field; φ < 0 inside, φ > 0 outside |
+| `bounds` | `((x0,x1),(y0,y1))` | Physical domain extents |
+| `image_path` | `str \| None` | Source path (stored for reference only) |
+
+### `image_to_levelset_2d`
+
+```python
+phi = image_to_levelset_2d(image_path, params, *, levelset_index=0)
+# Returns ndarray (ny, nx); phi < 0 inside
+```
+
+Runs the full uSCMAN pipeline and returns the raw level-set array.
+`params` is the uSCMAN JSON config dict (keys: `"Image Properties"`,
+`"Preprocessing Properties"`, `"Segmentation"`). `levelset_index` selects
+which phase in multiphase segmentation (0 or 1).
+
+### `image_to_geometry_2d`
+
+```python
+geom = image_to_geometry_2d(image_path, params, bounds=None, *, levelset_index=0)
+# Returns ImageGeometry2D ready for CSG composition
+```
+
+Same as `image_to_levelset_2d` but returns an `ImageGeometry2D`.
+If `bounds` is `None`, the image is mapped to pixel coordinates `((0, nx), (0, ny))`.
+
+```python
+import json
+from img2sdf import image_to_geometry_2d
+from sdf2d import Circle2D, sample_levelset_2d
+
+params = json.load(open("HEDS/HEDS.json"))
+geom = image_to_geometry_2d("HEDS/HEDS.jpg", params, bounds=((-1, 1), (-1, 1)))
+
+# Compose with analytic shapes
+scene = geom.union(Circle2D(radius=0.1).translate(0.5, 0.0))
+phi = sample_levelset_2d(scene, bounds=((-1, 1), (-1, 1)), resolution=(256, 256))
+```
+
+### `ImageExtruded3D`
+
+```python
+from img2sdf.image_leaf import ImageExtruded3D
+
+geom3d = ImageExtruded3D(hdf5_path, dataset_path, physical_size_xy, thickness_z)
+```
+
+Reads a 2D Chan-Vese SDF from a uSCMAN HDF5 results file and extrudes it into
+a `Geometry3D` node. Supports all `Geometry3D` methods.
+
+| Parameter | Description |
+|-----------|-------------|
+| `hdf5_path` | Path to the uSCMAN results HDF5 file |
+| `dataset_path` | HDF5 group path containing `Phi1`, `I`, `J` datasets |
+| `physical_size_xy` | `(width, height)` physical extent in world units |
+| `thickness_z` | Extrusion depth along the Z axis |
+
+### `SDFLibraryImg2D` (AMReX)
+
+```python
+from img2sdf import SDFLibraryImg2D
+import amrex.space2d as amr
+
+lib = SDFLibraryImg2D(geom, ba, dm)
+mf  = lib.from_image(image_path, params, bounds=((x0,x1),(y0,y1)))
+# mf is an amr.MultiFab
+```
+
+Runs the NumPy Chan-Vese pipeline first, then evaluates the resulting
+`ImageGeometry2D` at each AMReX cell centre via `SDFLibrary2D.from_geometry()`.
+The image-derived SDF is available on the AMReX grid without porting Chan-Vese
+to AMReX — the same bridge used by all `Geometry2D` subclasses.
 
 ## AMReX integration
 
