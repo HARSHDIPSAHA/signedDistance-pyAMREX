@@ -1,4 +1,4 @@
-"""Dispatcher: routes to binary or multiphase Chan-Vese.
+"""Dispatcher: routes to binary or multiphase Chan-Vese (2D) or 3D Chan-Vese.
 Adapted from uSCMAN Segmentation.py — unchanged logic, new import paths.
 """
 from __future__ import annotations
@@ -33,7 +33,35 @@ def create_levelset_dictionary(Phi: list, segmentation: list, energies=None) -> 
     return d
 
 
+def _create_levelset_dictionary_3d(Phi: list, segmentation: list) -> dict:
+    """Build a result dictionary for a 3D level-set field."""
+    phi0 = Phi[0]
+    D, H, W = phi0.shape
+    d = {"D": D, "H": H, "W": W}
+    for i, phi in enumerate(Phi):
+        d[f"Phi{i + 1}"] = phi
+    for i, region in enumerate(segmentation):
+        d[f"R{i + 1}"] = region
+    return d
+
+
 def SegmentImage(img_name: str, image: np.ndarray, params: dict, gpu_available: bool) -> dict:
+    # Dispatch to 3D solver when the input volume is 3-dimensional
+    if image.ndim == 3:
+        from .cv_single_3d import chan_vese_3d
+        seg_params = params.get("Segmentation", {})
+        cv_kwargs = {
+            k: seg_params[k]
+            for k in (
+                "mu", "lambda1", "lambda2", "tol", "max_iter", "dt",
+                "sigma", "reinit_interval",
+            )
+            if k in seg_params
+        }
+        segmentation, Phi = chan_vese_3d(image, gpu_available=gpu_available, **cv_kwargs)
+        return _create_levelset_dictionary_3d(Phi, segmentation)
+
+    # 2D path (unchanged)
     # Define method ('binary' or 'multiphase')
     method = params["Segmentation"]["segmentation method"]
 

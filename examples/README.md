@@ -87,6 +87,16 @@ Runs multiphase Chan-Vese segmentation on a synthetic test image.
 uv run python examples/img2sdf/MULTIPHASE_TEST.py
 ```
 
+### `img2sdf/volume_3d_example.py`
+3D volume → SDF pipeline.  Creates a synthetic 64³ volume with a spherical
+inclusion, segments it with 3D Chan-Vese, computes morphometrics
+(volume, surface area, sphericity), and saves the SDF as a `.npy` file.
+
+```bash
+uv run python examples/img2sdf/volume_3d_example.py
+# Output: examples/img2sdf/output/sphere_sdf.npy
+```
+
 ---
 
 ## SDF sign convention

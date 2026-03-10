@@ -18,7 +18,7 @@ SDF formulas are adapted from [iquilezles.org](https://iquilezles.org/articles/d
 | `sdf2d` | 2D geometry classes, grid sampling, optional AMReX output |
 | `sdf3d` | 3D geometry classes, grid sampling, optional AMReX output |
 | `stl2sdf` | Convert STL mesh → SDF grid (pure NumPy, watertight meshes only) |
-| `img2sdf` | Image → SDF via Chan-Vese segmentation (uSCMAN integrated) |
+| `img2sdf` | 2D image or 3D volume → SDF via Chan-Vese segmentation (uSCMAN integrated) |
 
 ## Files
 
@@ -27,7 +27,7 @@ SDF formulas are adapted from [iquilezles.org](https://iquilezles.org/articles/d
 - `sdf3d/` — 3D package: `Sphere3D`, `Box3D`, `Torus3D`, … (~30 shapes + warps)
 - `sdf3d/examples/` — High-level assemblies (`NATOFragment`, `RocketAssembly`)
 - `stl2sdf/` — STL mesh → SDF: `stl_to_geometry`
-- `img2sdf/` — Image → SDF: `image_to_geometry_2d`, `image_to_levelset_2d`, `ImageGeometry2D`
+- `img2sdf/` — Image/volume → SDF: `image_to_geometry_2d`, `ImageGeometry2D`, `volume_to_geometry_3d`, `ImageGeometry3D`, `compute_morphometry_3d`
 - `tests/` — pytest suite; no AMReX required (`test_amrex.py` skips automatically)
 - `scripts/` — Gallery scripts and AMReX plotfile renderer
 - `examples/` — Standalone demos; outputs written to `examples/`
@@ -123,6 +123,31 @@ phi = image_to_levelset_2d("HEDS/HEDS.jpg", params)
 
 > **Sign convention:** uSCMAN outputs φ > 0 inside; pySdf uses φ < 0 inside.
 > The negation is applied automatically in `image_to_levelset_2d` and `image_to_geometry_2d`.
+
+### `img2sdf` — 3D volume to SDF
+
+Segment a 3D volumetric array with Robust Chan-Vese and compose the result with
+any `sdf3d` shape:
+
+```python
+import numpy as np
+from img2sdf import volume_to_geometry_3d, compute_morphometry_3d
+from sdf3d import Sphere3D
+from sdf3d.grid import sample_levelset_3d
+
+volume = np.load("ct_scan.npy")          # shape (D, H, W)
+params = {"Segmentation": {"max_iter": 200, "sigma": 3.0}}
+
+geom = volume_to_geometry_3d(volume, params)
+
+# Morphometric analysis
+morph = compute_morphometry_3d(geom.phi)
+print(morph["volume"], morph["surface_area"], morph["sphericity"])
+
+# CSG: subtract a sphere from the segmented volume
+hollowed = geom.subtract(Sphere3D(0.2).translate(0, 0, 0))
+phi = sample_levelset_3d(hollowed, bounds=((-1,1),(-1,1),(-1,1)), resolution=(64,64,64))
+```
 
 ### AMReX output (optional)
 
