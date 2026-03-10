@@ -461,8 +461,117 @@ mf  = lib.from_image(image_path, params, bounds=((x0,x1),(y0,y1)))
 
 Runs the NumPy Chan-Vese pipeline first, then evaluates the resulting
 `ImageGeometry2D` at each AMReX cell centre via `SDFLibrary2D.from_geometry()`.
-The image-derived SDF is available on the AMReX grid without porting Chan-Vese
-to AMReX — the same bridge used by all `Geometry2D` subclasses.
+
+## 3D Volume → SDF — `img2sdf` (3D)
+
+Converts 3D volumetric data (shape `(D, H, W)`) into an `ImageGeometry3D` via
+3D Robust Chan-Vese segmentation.  Includes 3D morphometric analysis
+(volume, surface area, sphericity).
+
+> **Sign convention:** φ < 0 inside, φ > 0 outside (pySdf convention).
+> The negation from the uSCMAN output (φ > 0 inside) is applied automatically.
+
+```python
+from img2sdf import (
+    ImageGeometry3D,
+    volume_to_levelset_3d,
+    volume_to_geometry_3d,
+    compute_morphometry_3d,
+)
+```
+
+### `ImageGeometry3D`
+
+```python
+ImageGeometry3D(phi, bounds, image_path=None)
+```
+
+A `Geometry3D` subclass backed by a trilinearly interpolated 3D level-set field.
+Supports all `Geometry3D` methods: `.translate()`, `.rotate_x/y/z()`, `.scale()`,
+`.union()`, `.subtract()`, `.intersect()`, `.round()`, `.onion()`.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `phi` | `ndarray (D, H, W)` | Level-set field; φ < 0 inside, φ > 0 outside |
+| `bounds` | `((x0,x1),(y0,y1),(z0,z1))` | Physical domain extents |
+| `image_path` | `str or None` | Source path (stored for reference only) |
+
+### `volume_to_levelset_3d`
+
+```python
+phi = volume_to_levelset_3d(volume_path_or_array, params, *, levelset_index=0)
+# Returns ndarray (D, H, W); phi < 0 inside
+```
+
+Runs 3D Robust Chan-Vese segmentation and returns the raw level-set array.
+`volume_path_or_array` can be a numpy array or a file path
+(`.npy`, `.npz`, `.h5`/`.hdf5`, `.tif`/`.tiff`).
+
+Supported `params["Segmentation"]` keys: `mu`, `lambda1`, `lambda2`, `tol`,
+`max_iter`, `dt`, `sigma`, `reinit_interval` (all optional).
+
+### `volume_to_geometry_3d`
+
+```python
+geom = volume_to_geometry_3d(volume_path_or_array, params, bounds=None, *, levelset_index=0)
+# Returns ImageGeometry3D ready for CSG composition
+```
+
+Same as `volume_to_levelset_3d` but returns an `ImageGeometry3D`.
+If `bounds` is `None`, the volume is mapped to voxel coordinates
+`((0, W), (0, H), (0, D))`.
+
+```python
+import numpy as np
+from img2sdf import volume_to_geometry_3d
+from sdf3d import Sphere3D
+from sdf3d.grid import sample_levelset_3d
+
+volume = np.load("ct_scan.npy")   # shape (D, H, W)
+params = {"Segmentation": {"max_iter": 200, "sigma": 3.0}}
+geom   = volume_to_geometry_3d(volume, params, bounds=((-1,1),(-1,1),(-1,1)))
+
+hollowed = geom.subtract(Sphere3D(0.2))
+phi = sample_levelset_3d(hollowed, bounds=((-1,1),(-1,1),(-1,1)), resolution=(64,64,64))
+```
+
+### `compute_morphometry_3d`
+
+```python
+result = compute_morphometry_3d(phi, voxel_size=1.0)
+# Returns dict with keys: 'volume', 'surface_area', 'sphericity'
+```
+
+Computes 3D morphometric descriptors from a level-set field:
+
+| Feature | Formula | Notes |
+|---------|---------|-------|
+| `volume` | `count(φ<0) × voxel_size³` | Voxel count |
+| `surface_area` | Sum of marching-cubes triangle areas | Requires `scikit-image` |
+| `sphericity` | `π^(1/3) (6V)^(2/3) / A` | ψ = 1 for a perfect sphere |
+
+### `chan_vese_3d`
+
+```python
+from img2sdf.segmentation.cv_single_3d import chan_vese_3d
+
+segmentation, [phi] = chan_vese_3d(
+    volume,              # ndarray (D, H, W), normalised to [0, 1]
+    mu=0.25,             # area regularisation weight
+    lambda1=1.0,         # inside energy weight
+    lambda2=1.0,         # outside energy weight
+    tol=1e-3,            # convergence tolerance
+    max_iter=500,        # maximum iterations
+    dt=0.5,              # time step
+    sigma=3.0,           # Gaussian kernel sigma for local intensity modelling
+    reinit_interval=5,   # Sussman reinitialization frequency
+    gpu_available=False, # set True to use CuPy
+)
+# phi: uSCMAN convention (phi > 0 inside); caller negates for pySdf
+```
+
+Implements the 3D Robust Chan-Vese model with Gaussian-filtered local energy terms.
+Returns `(segmentation, [phi])`.  Requires `scipy`.
 
 ## AMReX integration
 
