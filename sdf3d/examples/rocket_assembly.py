@@ -2,28 +2,20 @@
 
 Usage::
 
-    from sdf3d import SDFLibrary3D
-    from sdf3d.complex import RocketAssembly
+    from sdf3d.examples import RocketAssembly
 
-    rocket_mf, rocket_geom = RocketAssembly(lib, body_radius=0.15)
+    geom = RocketAssembly(body_radius=0.15)
 """
 
 from __future__ import annotations
 
-from typing import Tuple, TYPE_CHECKING
-
 import numpy as np
 
 from .. import primitives as sdf
-from sdf3d.geometry import Sphere3D, Box3D, Union3D, Geometry3D
-
-if TYPE_CHECKING:
-    from sdf3d.amrex import SDFLibrary3D
-    import amrex.space3d as amr
+from sdf3d.geometry import Sphere3D, Box3D, SDF3D
 
 
 def RocketAssembly(
-    lib: "SDFLibrary3D",
     body_radius: float = 0.15,
     L_extra: float = 0.40,
     nose_len: float = 0.25,
@@ -31,7 +23,7 @@ def RocketAssembly(
     fin_height: float = 0.18,
     fin_thickness: float = 0.03,
     n_fins: int = 4,
-) -> "Tuple[amr.MultiFab, Geometry3D]":
+) -> SDF3D:
     """Build a parametric rocket assembly.
 
     The rocket consists of:
@@ -42,8 +34,6 @@ def RocketAssembly(
 
     Parameters
     ----------
-    lib:
-        An :class:`~sdf3d.amrex.SDFLibrary3D` instance.
     body_radius:
         Sphere radius of the body capsule (m).
     L_extra:
@@ -61,8 +51,9 @@ def RocketAssembly(
 
     Returns
     -------
-    tuple
-        ``(MultiFab, Geometry3D)`` — AMReX level-set field and geometry.
+    SDF3D
+        The composable geometry object.  To fill an AMReX MultiFab, call
+        ``lib.from_geometry(RocketAssembly(...))`` yourself.
     """
     R = body_radius
 
@@ -81,13 +72,13 @@ def RocketAssembly(
         q  = np.stack([qx, qz, qy], axis=-1)
         return sdf.sdCappedCone(q, h_cone, 0.0, R)
 
-    nose_geom = Geometry3D(_nose_sdf)
+    nose_geom = SDF3D(_nose_sdf)
 
     # Fins
     fin_half    = [fin_span / 2.0, fin_thickness / 2.0, fin_height / 2.0]
     z_fin_center = -0.18
 
-    fins_geom: Geometry3D | None = None
+    fins_geom: SDF3D | None = None
     for i in range(n_fins):
         angle      = i * (2 * np.pi / n_fins)
         radial_dist = R + fin_half[0]
@@ -100,11 +91,10 @@ def RocketAssembly(
             .translate(dx, dy, z_fin_center)
         )
 
-        fins_geom = single_fin if fins_geom is None else Union3D(fins_geom, single_fin)
+        fins_geom = single_fin if fins_geom is None else fins_geom | single_fin
 
-    rocket: Geometry3D = Union3D(body_geom, nose_geom)
+    rocket: SDF3D = body_geom | nose_geom
     if fins_geom is not None:
-        rocket = Union3D(rocket, fins_geom)
+        rocket = rocket | fins_geom
 
-    rocket_mf = lib.from_geometry(rocket)
-    return rocket_mf, rocket
+    return rocket

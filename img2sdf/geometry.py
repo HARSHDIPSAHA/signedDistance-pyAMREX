@@ -8,15 +8,15 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 from scipy.interpolate import RegularGridInterpolator
-from sdf2d import Geometry2D
+from sdf2d import SDF2D
 
 _Array = npt.NDArray[np.floating]
 
 
-class ImageGeometry2D(Geometry2D):
+class ImageGeometry2D(SDF2D):
     """A 2-D SDF geometry sourced from a segmented image level-set field.
 
-    Inherits the full pySdf Geometry2D API — including save_png(),
+    Inherits the full pySdf SDF2D API — including save_png(),
     translate(), rotate(), scale(), union(), subtract(), intersect().
 
     Parameters

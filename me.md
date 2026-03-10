@@ -1,0 +1,2 @@
+Neither SDF nor MultiFabGrid store _any_ grids or arrays in whatever format.<br>
+SDF is lazy, and MultiFabGrid only provides a context in which multifab operations are performed or new multifabs can be created.

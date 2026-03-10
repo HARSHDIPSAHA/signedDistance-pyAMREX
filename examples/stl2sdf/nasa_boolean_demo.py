@@ -1,6 +1,6 @@
 """nasa_boolean_demo.py — Boolean operations between a NASA STL mesh and analytic shapes.
 
-Demonstrates that stl_to_geometry returns a plain Geometry3D that composes
+Demonstrates that stl_to_geometry returns a plain SDF3D that composes
 with the same union / subtraction API as analytic primitives (Sphere3D, Box3D).
 
 Shapes
@@ -49,7 +49,7 @@ _BOUNDS = ((-0.65, 0.65), (-0.65, 0.65), (-0.45, 0.45))
 # ---------------------------------------------------------------------------
 
 def _load_wheel():
-    """Return a centred, unit-scale Geometry3D for mars_wheel.stl."""
+    """Return a centred, unit-scale SDF3D for mars_wheel.stl."""
     from stl2sdf._math import _stl_to_triangles
 
     tris  = _stl_to_triangles(_WHEEL_STL)

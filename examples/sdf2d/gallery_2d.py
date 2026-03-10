@@ -3,15 +3,12 @@
 Usage::
 
     uv run python examples/sdf2d/gallery_2d.py                   # saves examples/sdf2d/output/gallery_2d.png
-    uv run python examples/sdf2d/gallery_2d.py --out my_file.png # custom output path
 
 Requirements: numpy, matplotlib  (no AMReX needed)
 """
 from __future__ import annotations
 
-import argparse
 import sys
-import warnings
 from pathlib import Path
 
 # Ensure the repo root (two levels above examples/sdf2d/) is importable
@@ -20,14 +17,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import matplotlib.pyplot as plt
 import numpy as np
 
-from sdf2d import sample_levelset_2d
+from sdf2d.geometry import SDF2D
 
 
 # ---------------------------------------------------------------------------
 # Shape catalogue — (label, geometry_object)
 # ---------------------------------------------------------------------------
 
-def _make_shapes() -> list[tuple[str, object]]:
+def _make_shapes() -> list[tuple[str, SDF2D]]:
     from sdf2d import (
         Circle2D, Box2D, RoundedBox2D, OrientedBox2D, Segment2D,
         Rhombus2D, Trapezoid2D, Parallelogram2D,
@@ -39,7 +36,6 @@ def _make_shapes() -> list[tuple[str, object]]:
         Vesica2D, Moon2D, RoundedCross2D, Egg2D, Heart2D, Cross2D, RoundedX2D,
         Polygon2D, Ellipse2D, Parabola2D, ParabolaSegment2D, Bezier2D,
         BlobbyCross2D, Tunnel2D, Stairs2D, QuadraticCircle2D, Hyperbola2D,
-        Union2D, Subtraction2D,
     )
 
     sc = [0.5 * np.sqrt(2), 0.5 * np.sqrt(2)]
@@ -85,9 +81,9 @@ def _make_shapes() -> list[tuple[str, object]]:
         ("Stairs2D",             Stairs2D((0.22, 0.22), 3).translate(-0.33, -0.33)),
         ("QuadraticCircle2D",    QuadraticCircle2D()),
         ("Hyperbola2D",          Hyperbola2D(0.6, 0.4)),
-        # Boolean example
-        ("Union2D",              Union2D(Circle2D(0.45), Box2D((0.35, 0.35)).translate(0.3, 0.3))),
-        ("Subtraction2D",        Subtraction2D(Circle2D(0.65), Circle2D(0.35).translate(0.25, 0.0))),
+        # Boolean examples
+        ("union",       Circle2D(0.45) | Box2D((0.35, 0.35)).translate(0.3, 0.3)),
+        ("subtraction", Circle2D(0.65) - Circle2D(0.35).translate(0.25, 0.0)),
     ]
     return shapes
 
@@ -101,17 +97,7 @@ _RES    = (512, 512)
 _EXTENT = [-1, 1, -1, 1]
 
 
-def _eval_shape(geom) -> np.ndarray | None:
-    """Evaluate SDF on grid; return None on failure."""
-    try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            return sample_levelset_2d(geom, _BOUNDS, _RES)
-    except Exception:
-        return None
-
-
-def render_gallery(shapes: list[tuple[str, object]], out_path: Path, ncols: int = 7) -> None:
+def render_gallery(shapes: list[tuple[str, SDF2D]], out_path: Path, ncols: int = 7) -> None:
     nrows = (len(shapes) + ncols - 1) // ncols
     fig, axes = plt.subplots(
         nrows, ncols,
@@ -121,7 +107,7 @@ def render_gallery(shapes: list[tuple[str, object]], out_path: Path, ncols: int 
     axes = np.asarray(axes).ravel()
 
     for ax, (label, geom) in zip(axes, shapes):
-        phi = _eval_shape(geom)
+        phi = geom.to_numpy(_BOUNDS, _RES)
         ax.set_facecolor("#111111")
         ax.set_xticks([])
         ax.set_yticks([])
@@ -155,19 +141,6 @@ def render_gallery(shapes: list[tuple[str, object]], out_path: Path, ncols: int 
     print(f"Saved: {out_path}")
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Render all sdf2d shapes to a single PNG gallery.")
-    parser.add_argument("--out", default="gallery_2d.png", help="Output PNG path")
-    parser.add_argument("--cols", type=int, default=7, help="Number of columns (default 7)")
-    args = parser.parse_args()
-
-    out = Path(args.out)
-    if out.parent == Path('.'):
-        out = Path("output") / out
-    out.parent.mkdir(parents=True, exist_ok=True)
-    shapes = _make_shapes()
-    render_gallery(shapes, out, ncols=args.cols)
-
-
 if __name__ == "__main__":
-    main()
+    output = Path(__file__).parent / "output" / "gallery_2d.png"
+    render_gallery(_make_shapes(), output, ncols=7)

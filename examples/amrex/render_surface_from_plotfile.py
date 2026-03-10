@@ -11,12 +11,12 @@ except Exception as exc:  # pragma: no cover - runtime environment specific
 
 def _get_surface_api():
     try:
-        from yt.visualization.volume_rendering.api import Scene, SurfaceSource
+        from yt.visualization.volume_rendering.api import Scene, SurfaceSource  # type: ignore[attr-defined]
         return ("yt_surface", Scene, SurfaceSource)
     except Exception:
         try:
             from yt.visualization.volume_rendering.scene import Scene
-            from yt.visualization.volume_rendering.render_source import SurfaceSource
+            from yt.visualization.volume_rendering.render_source import SurfaceSource  # type: ignore[attr-defined]
             return ("yt_surface", Scene, SurfaceSource)
         except Exception:
             return ("marching_cubes", None, None)

@@ -2,13 +2,12 @@ import numpy as np
 import h5py
 from scipy.interpolate import RegularGridInterpolator
 
-# Import your base class!
-from sdf3d import Geometry3D
+from sdf3d import SDF3D
 
-class ImageExtruded3D(Geometry3D):
+class ImageExtruded3D(SDF3D):
     """
     Reads a 2D Chan-Vese SDF from uSCMAN and extrudes it into a 3D geometry node.
-    Inherits from Geometry3D, so it automatically gets .translate(), .union(), 
+    Inherits from SDF3D, so it automatically gets .translate(), .union(),
     .save_plotly_html(), etc.
     """
     def __init__(self,hdf5_path: str,dataset_path: str,physical_size_xy: tuple,thickness_z: float) -> None:
@@ -48,6 +47,6 @@ class ImageExtruded3D(Geometry3D):
             # The exact math for 3D extrusion
             return np.maximum(d_2d, d_z)
 
-        # 6. Pass it to the Geometry3D base class
+        # 6. Pass it to the SDF3D base class
         super().__init__(_sdf)
         

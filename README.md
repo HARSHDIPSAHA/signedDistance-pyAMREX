@@ -55,26 +55,26 @@ _Gold isosurfaces extracted from 3D SDF grids using marching cubes._
 ### `sdf2d` — 2D geometry
 
 ```python
-from sdf2d import Circle2D, Box2D, Union2D, sample_levelset_2d
+from sdf2d import Circle2D, Box2D
 
 circle = Circle2D(radius=0.3)
 box    = Box2D(half_size=(0.4, 0.2)).translate(0.5, 0.0)
-shape  = circle.union(box)
+shape  = circle | box              # union operator
 
-phi = sample_levelset_2d(shape, bounds=((-1,1), (-1,1)), resolution=(128, 128))
+phi = shape.to_numpy(bounds=((-1,1), (-1,1)), resolution=(128, 128))
 # phi.shape == (128, 128);  phi < 0 inside, phi > 0 outside
 ```
 
 ### `sdf3d` — 3D geometry
 
 ```python
-from sdf3d import Sphere3D, Box3D, Union3D, sample_levelset_3d
+from sdf3d import Sphere3D, Box3D
 
 sphere = Sphere3D(radius=0.3)
 box    = Box3D(half_size=(0.2, 0.2, 0.2)).translate(0.4, 0.0, 0.0)
-shape  = Union3D(sphere, box)
+shape  = sphere | box              # union operator
 
-phi = sample_levelset_3d(shape, bounds=((-1,1),(-1,1),(-1,1)), resolution=(64,64,64))
+phi = shape.to_numpy(bounds=((-1,1),(-1,1),(-1,1)), resolution=(64,64,64))
 # phi.shape == (64, 64, 64);  phi < 0 inside, phi > 0 outside
 ```
 
@@ -153,7 +153,7 @@ phi = sample_levelset_3d(hollowed, bounds=((-1,1),(-1,1),(-1,1)), resolution=(64
 
 ```python
 import amrex.space3d as amr
-from sdf3d import SDFLibrary3D
+from sdf3d import Sphere3D, Box3D, MultiFabGrid3D
 
 amr.initialize([])
 try:
@@ -163,9 +163,12 @@ try:
     ba       = amr.BoxArray(domain); ba.max_size(32)
     dm       = amr.DistributionMapping(ba)
 
-    lib = SDFLibrary3D(geom, ba, dm)
-    mf  = lib.sphere(center=(0,0,0), radius=0.3)
-    # mf is an amr.MultiFab
+    # Grid context — use it for all fills and boolean ops
+    grid = MultiFabGrid3D(geom, ba, dm)
+    mf_a = Sphere3D(0.3).to_multifab(grid)
+    mf_b = Box3D((0.2, 0.2, 0.2)).to_multifab(grid)
+    mf_u = grid.union(mf_a, mf_b)           # min(a, b) element-wise
+    mf_s = grid.subtract(mf_b, mf_a)        # box with sphere carved out
 finally:
     amr.finalize()
 ```

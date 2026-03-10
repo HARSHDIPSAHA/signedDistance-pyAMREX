@@ -13,32 +13,42 @@ https://iquilezles.org/articles/distfunctions/
 """
 
 import numpy as np
+import numpy.typing as npt
+from typing import TypeAlias
 
-from _sdf_common import *  # noqa: F401, F403  — re-export shared helpers
+from _sdf_common import (
+    FloatArray, Distances,
+    vec2, vec3,
+    length, dot, dot2, clamp, safe_div,
+    opUnion, opSubtraction, opIntersection,
+    opRound, opOnion, opScale,
+)
+
+Points3D:  TypeAlias = npt.NDArray[np.floating]  # shape (..., 3)
 
 
 # ===========================================================================
 # 3-D primitive SDFs
 # ===========================================================================
 
-def sdSphere(p: _F, s: float) -> _F:
+def sdSphere(p: Points3D, s: float) -> Distances:
     """Sphere of radius *s* centred at the origin."""
     return length(p) - s
 
 
-def sdBox(p: _F, b: _F) -> _F:
+def sdBox(p: Points3D, b: FloatArray) -> Distances:
     """Axis-aligned box with half-extents *b* ``(bx, by, bz)``."""
     q = np.abs(p) - b
     return length(np.maximum(q, 0.0)) + np.minimum(np.max(q, axis=-1), 0.0)
 
 
-def sdRoundBox(p: _F, b: _F, r: float) -> _F:
+def sdRoundBox(p: Points3D, b: FloatArray, r: float) -> Distances:
     """Axis-aligned box with half-extents *b* and corner radius *r*."""
     q = np.abs(p) - b + r
     return length(np.maximum(q, 0.0)) + np.minimum(np.max(q, axis=-1), 0.0) - r
 
 
-def sdBoxFrame(p: _F, b: _F, e: float) -> _F:
+def sdBoxFrame(p: Points3D, b: FloatArray, e: float) -> Distances:
     """Wireframe box with half-extents *b* and wire thickness *e*."""
     p = np.abs(p) - b
     q = np.abs(p + e) - e
@@ -54,13 +64,13 @@ def sdBoxFrame(p: _F, b: _F, e: float) -> _F:
     return np.minimum(np.minimum(a, b_), c)
 
 
-def sdTorus(p: _F, t: _F) -> _F:
+def sdTorus(p: Points3D, t: FloatArray) -> Distances:
     """Torus in the XZ plane; *t* = ``(R, r)`` (major, minor radii)."""
     q = vec2(length(p[..., [0, 2]]) - t[0], p[..., 1])
     return length(q) - t[1]
 
 
-def sdCappedTorus(p: _F, sc: _F, ra: float, rb: float) -> _F:
+def sdCappedTorus(p: Points3D, sc: FloatArray, ra: float, rb: float) -> Distances:
     """Capped torus; *sc* = ``(sin, cos)`` of the cap half-angle."""
     px = np.abs(p[..., 0])
     py = p[..., 1]
@@ -68,18 +78,18 @@ def sdCappedTorus(p: _F, sc: _F, ra: float, rb: float) -> _F:
     return np.sqrt(dot2(p) + ra * ra - 2.0 * ra * k) - rb
 
 
-def sdLink(p: _F, le: float, r1: float, r2: float) -> _F:
+def sdLink(p: Points3D, le: float, r1: float, r2: float) -> Distances:
     """Chain link; *le* is half-length, *r1*/*r2* are inner/wire radii."""
     q = vec3(p[..., 0], np.maximum(np.abs(p[..., 1]) - le, 0.0), p[..., 2])
     return length(vec2(length(q[..., [0, 1]]) - r1, q[..., 2])) - r2
 
 
-def sdCylinder(p: _F, c: _F) -> _F:
+def sdCylinder(p: Points3D, c: FloatArray) -> Distances:
     """Infinite cylinder; *c* = ``(cx, cz, radius)``."""
     return length(vec2(p[..., 0] - c[0], p[..., 2] - c[1])) - c[2]
 
 
-def sdConeExact(p: _F, c: _F, h: float) -> _F:
+def sdConeExact(p: Points3D, c: FloatArray, h: float) -> Distances:
     """Exact signed cone; *c* = ``(sin, cos)`` of half-angle, *h* is height."""
     q = h * vec2(safe_div(c[0], c[1]), -1.0)
     w = vec2(length(p[..., [0, 2]]), p[..., 1])
@@ -91,26 +101,26 @@ def sdConeExact(p: _F, c: _F, h: float) -> _F:
     return np.sqrt(d) * np.sign(s)
 
 
-def sdConeBound(p: _F, c: _F, h: float) -> _F:
+def sdConeBound(p: Points3D, c: FloatArray, h: float) -> Distances:
     """Bound (over-estimate) cone; *c* = ``(sin, cos)``, *h* is height."""
     q = length(p[..., [0, 2]])
     return np.maximum(c[0] * q + c[1] * p[..., 1], -h - p[..., 1])
 
 
-def sdConeInfinite(p: _F, c: _F) -> _F:
+def sdConeInfinite(p: Points3D, c: FloatArray) -> Distances:
     """Infinite cone; *c* = ``(sin, cos)`` of half-angle."""
     q = vec2(length(p[..., [0, 2]]), -p[..., 1])
     d = length(q - c * np.maximum(dot(q, c), 0.0)[..., None])
     return d * np.where(q[..., 0] * c[1] - q[..., 1] * c[0] < 0.0, -1.0, 1.0)
 
 
-def sdPlane(p: _F, n: _F, h: float) -> _F:
+def sdPlane(p: Points3D, n: FloatArray, h: float) -> Distances:
     """Half-space plane; *n* is the normal (need not be unit), *h* the offset."""
     n = n / np.linalg.norm(n)
     return dot(p, n) + h
 
 
-def sdHexPrism(p: _F, h: _F) -> _F:
+def sdHexPrism(p: Points3D, h: FloatArray) -> Distances:
     """Hexagonal prism; *h* = ``(half_hex_radius, half_height)``."""
     k = np.array([-0.8660254, 0.5, 0.57735])
     p = np.abs(p)
@@ -124,7 +134,7 @@ def sdHexPrism(p: _F, h: _F) -> _F:
     return np.minimum(np.maximum(d[..., 0], d[..., 1]), 0.0) + length(np.maximum(d, 0.0))
 
 
-def sdTriPrism(p: _F, h: _F) -> _F:
+def sdTriPrism(p: Points3D, h: FloatArray) -> Distances:
     """Triangular prism; *h* = ``(half_base, half_height)``."""
     q = np.abs(p)
     return np.maximum(
@@ -133,7 +143,7 @@ def sdTriPrism(p: _F, h: _F) -> _F:
     )
 
 
-def sdCapsule(p: _F, a: _F, b: _F, r: float) -> _F:
+def sdCapsule(p: Points3D, a: FloatArray, b: FloatArray, r: float) -> Distances:
     """Capsule from *a* to *b* with radius *r*."""
     pa = p - a
     ba = b - a
@@ -141,19 +151,19 @@ def sdCapsule(p: _F, a: _F, b: _F, r: float) -> _F:
     return length(pa - ba * h[..., None]) - r
 
 
-def sdVerticalCapsule(p: _F, h: float, r: float) -> _F:
+def sdVerticalCapsule(p: Points3D, h: float, r: float) -> Distances:
     """Vertical capsule along Y with half-height *h* and radius *r*."""
     py = p[..., 1] - clamp(p[..., 1], 0.0, h)
     return length(vec3(p[..., 0], py, p[..., 2])) - r
 
 
-def sdCappedCylinder(p: _F, r: float, h: float) -> _F:
+def sdCappedCylinder(p: Points3D, r: float, h: float) -> Distances:
     """Capped cylinder of radius *r* and half-height *h* along Y."""
     d = np.abs(vec2(length(p[..., [0, 2]]), p[..., 1])) - vec2(r, h)
     return np.minimum(np.maximum(d[..., 0], d[..., 1]), 0.0) + length(np.maximum(d, 0.0))
 
 
-def sdCappedCylinderSegment(p: _F, a: _F, b: _F, r: float) -> _F:
+def sdCappedCylinderSegment(p: Points3D, a: FloatArray, b: FloatArray, r: float) -> Distances:
     """Arbitrarily oriented capped cylinder from *a* to *b* with radius *r*."""
     ba   = b - a
     pa   = p - a
@@ -171,7 +181,7 @@ def sdCappedCylinderSegment(p: _F, a: _F, b: _F, r: float) -> _F:
     return np.sign(d) * np.sqrt(np.abs(d)) / baba
 
 
-def sdRoundedCylinder(p: _F, ra: float, rb: float, h: float) -> _F:
+def sdRoundedCylinder(p: Points3D, ra: float, rb: float, h: float) -> Distances:
     """Rounded cylinder of outer radius *ra*, edge radius *rb*, half-height *h*."""
     d = vec2(length(p[..., [0, 2]]) - ra + rb, np.abs(p[..., 1]) - h + rb)
     return (
@@ -181,7 +191,7 @@ def sdRoundedCylinder(p: _F, ra: float, rb: float, h: float) -> _F:
     )
 
 
-def sdCappedCone(p: _F, h: float, r1: float, r2: float) -> _F:
+def sdCappedCone(p: Points3D, h: float, r1: float, r2: float) -> Distances:
     """Capped cone along Y with half-height *h*, base radius *r1*, tip radius *r2*."""
     q  = vec2(length(p[..., [0, 2]]), p[..., 1])
     k1 = vec2(r2, h)
@@ -195,7 +205,7 @@ def sdCappedCone(p: _F, h: float, r1: float, r2: float) -> _F:
     return s * np.sqrt(np.minimum(dot2(ca), dot2(cb)))
 
 
-def sdCappedConeSegment(p: _F, a: _F, b: _F, ra: float, rb: float) -> _F:
+def sdCappedConeSegment(p: Points3D, a: FloatArray, b: FloatArray, ra: float, rb: float) -> Distances:
     """Capped cone from *a* to *b* with radii *ra* (at *a*) and *rb* (at *b*)."""
     rba  = rb - ra
     baba = dot2(b - a)
@@ -214,7 +224,7 @@ def sdCappedConeSegment(p: _F, a: _F, b: _F, ra: float, rb: float) -> _F:
     )
 
 
-def sdSolidAngle(p: _F, c: _F, ra: float) -> _F:
+def sdSolidAngle(p: Points3D, c: FloatArray, ra: float) -> Distances:
     """Solid angle (partial sphere); *c* = ``(sin, cos)`` of the cap half-angle."""
     q = vec2(length(p[..., [0, 2]]), p[..., 1])
     l = length(q) - ra
@@ -222,7 +232,7 @@ def sdSolidAngle(p: _F, c: _F, ra: float) -> _F:
     return np.maximum(l, m * np.sign(c[1] * q[..., 0] - c[0] * q[..., 1]))
 
 
-def sdCutSphere(p: _F, r: float, h: float) -> _F:
+def sdCutSphere(p: Points3D, r: float, h: float) -> Distances:
     """Sphere of radius *r* with a planar cut at height *h*."""
     w = np.sqrt(r * r - h * h)
     q = vec2(length(p[..., [0, 2]]), p[..., 1])
@@ -237,7 +247,7 @@ def sdCutSphere(p: _F, r: float, h: float) -> _F:
     )
 
 
-def sdCutHollowSphere(p: _F, r: float, h: float, t: float) -> _F:
+def sdCutHollowSphere(p: Points3D, r: float, h: float, t: float) -> Distances:
     """Cut hollow sphere of radius *r*, cut at *h*, shell thickness *t*."""
     w = np.sqrt(r * r - h * h)
     q = vec2(length(p[..., [0, 2]]), p[..., 1])
@@ -248,7 +258,7 @@ def sdCutHollowSphere(p: _F, r: float, h: float, t: float) -> _F:
     ) - t
 
 
-def sdDeathStar(p2: _F, ra: float, rb: float, d: float) -> _F:
+def sdDeathStar(p2: Points3D, ra: float, rb: float, d: float) -> Distances:
     """Death Star: large sphere *ra* with spherical bite *rb* at distance *d*."""
     a    = (ra * ra - rb * rb + d * d) / (2.0 * d)
     b    = np.sqrt(np.maximum(ra * ra - a * a, 0.0))
@@ -261,7 +271,7 @@ def sdDeathStar(p2: _F, ra: float, rb: float, d: float) -> _F:
     )
 
 
-def sdRoundCone(p: _F, r1: float, r2: float, h: float) -> _F:
+def sdRoundCone(p: Points3D, r1: float, r2: float, h: float) -> Distances:
     """Round cone along Y; *r1* is base radius, *r2* is tip, *h* is height."""
     b = (r1 - r2) / h
     a = np.sqrt(1.0 - b * b)
@@ -274,7 +284,7 @@ def sdRoundCone(p: _F, r1: float, r2: float, h: float) -> _F:
     )
 
 
-def sdRoundConeSegment(p: _F, a: _F, b: _F, r1: float, r2: float) -> _F:
+def sdRoundConeSegment(p: Points3D, a: FloatArray, b: FloatArray, r1: float, r2: float) -> Distances:
     """Round cone from *a* to *b* with radii *r1* and *r2*."""
     ba  = b - a
     l2  = dot2(ba)
@@ -296,14 +306,14 @@ def sdRoundConeSegment(p: _F, a: _F, b: _F, r1: float, r2: float) -> _F:
     return np.where(c1, o1, np.where(c2, o2, o3))
 
 
-def sdEllipsoid(p: _F, r: _F) -> _F:
+def sdEllipsoid(p: Points3D, r: FloatArray) -> Distances:
     """Ellipsoid with semi-axes *r* ``(rx, ry, rz)``."""
     k0 = length(p / r)
     k1 = length(p / (r * r))
     return k0 * (k0 - 1.0) / np.where(k1 == 0.0, 1e-12, k1)
 
 
-def sdVesicaSegment(p: _F, a: _F, b: _F, w: float) -> _F:
+def sdVesicaSegment(p: Points3D, a: FloatArray, b: FloatArray, w: float) -> Distances:
     """Vesica piscis along segment *a*→*b* with half-width *w*."""
     c   = (a + b) * 0.5
     l   = length(b - a)
@@ -317,7 +327,7 @@ def sdVesicaSegment(p: _F, a: _F, b: _F, w: float) -> _F:
     return length(q - h[..., :2]) - h[..., 2]
 
 
-def sdRhombus(p: _F, la: float, lb: float, h: float, ra: float) -> _F:
+def sdRhombus(p: Points3D, la: float, lb: float, h: float, ra: float) -> Distances:
     """Rhombus with half-extents *la*/*lb*, height *h*, and edge radius *ra*."""
     p  = np.abs(p)
     f  = clamp((la * p[..., 0] - lb * p[..., 2] + lb * lb) / (la * la + lb * lb), 0.0, 1.0)
@@ -326,7 +336,7 @@ def sdRhombus(p: _F, la: float, lb: float, h: float, ra: float) -> _F:
     return np.minimum(np.maximum(q[..., 0], q[..., 1]), 0.0) + length(np.maximum(q, 0.0))
 
 
-def sdOctahedronExact(p: _F, s: float) -> _F:
+def sdOctahedronExact(p: Points3D, s: float) -> Distances:
     """Exact signed octahedron with inradius *s*."""
     p = np.abs(p)
     m = p[..., 0] + p[..., 1] + p[..., 2] - s
@@ -343,13 +353,13 @@ def sdOctahedronExact(p: _F, s: float) -> _F:
     return np.where(mask1 | mask2 | mask3, dist, res)
 
 
-def sdOctahedronBound(p: _F, s: float) -> _F:
+def sdOctahedronBound(p: Points3D, s: float) -> Distances:
     """Bounding (over-estimate) octahedron with inradius *s*."""
     p = np.abs(p)
     return (p[..., 0] + p[..., 1] + p[..., 2] - s) * 0.57735027
 
 
-def sdPyramid(p: _F, h: float) -> _F:
+def sdPyramid(p: Points3D, h: float) -> Distances:
     """Square-base pyramid of half-base 0.5 and height *h*."""
     m2  = h * h + 0.25
     pxz = np.abs(p[..., [0, 2]])
@@ -373,7 +383,7 @@ def sdPyramid(p: _F, h: float) -> _F:
 # 3-D unsigned-distance helpers
 # ===========================================================================
 
-def udTriangle(p: _F, a: _F, b: _F, c: _F) -> _F:
+def udTriangle(p: Points3D, a: FloatArray, b: FloatArray, c: FloatArray) -> Distances:
     """Unsigned distance to a 3-D triangle *a*-*b*-*c*."""
     ba  = b - a;  pa = p - a
     cb  = c - b;  pb = p - b
@@ -393,7 +403,7 @@ def udTriangle(p: _F, a: _F, b: _F, c: _F) -> _F:
     return np.sqrt(np.where(cond, d, d_plane))
 
 
-def udQuad(p: _F, a: _F, b: _F, c: _F, d: _F) -> _F:
+def udQuad(p: Points3D, a: FloatArray, b: FloatArray, c: FloatArray, d: FloatArray) -> Distances:
     """Unsigned distance to a 3-D quad *a*-*b*-*c*-*d*."""
     ba = b - a;  pa = p - a
     cb = c - b;  pb = p - b
@@ -420,24 +430,24 @@ def udQuad(p: _F, a: _F, b: _F, c: _F, d: _F) -> _F:
 # 3-D-only boolean variants
 # ===========================================================================
 
-def opXor(d1: _F, d2: _F) -> _F:
+def opXor(d1: FloatArray, d2: FloatArray) -> Distances:
     """Exclusive-or of two SDFs."""
     return np.maximum(np.minimum(d1, d2), -np.maximum(d1, d2))
 
 
-def opSmoothUnion(d1: _F, d2: _F, k: float) -> _F:
+def opSmoothUnion(d1: FloatArray, d2: FloatArray, k: float) -> Distances:
     """Smooth union with smoothing factor *k*."""
     k = k * 4.0
     h = np.maximum(k - np.abs(d1 - d2), 0.0)
     return np.minimum(d1, d2) - h * h * 0.25 / k
 
 
-def opSmoothSubtraction(d1: _F, d2: _F, k: float) -> _F:
+def opSmoothSubtraction(d1: FloatArray, d2: FloatArray, k: float) -> Distances:
     """Smooth subtraction with smoothing factor *k*."""
     return -opSmoothUnion(d1, -d2, k)
 
 
-def opSmoothIntersection(d1: _F, d2: _F, k: float) -> _F:
+def opSmoothIntersection(d1: FloatArray, d2: FloatArray, k: float) -> Distances:
     """Smooth intersection with smoothing factor *k*."""
     return -opSmoothUnion(-d1, -d2, k)
 
@@ -446,39 +456,39 @@ def opSmoothIntersection(d1: _F, d2: _F, k: float) -> _F:
 # Space-warp / domain operators
 # ===========================================================================
 
-def opRevolution(p: _F, primitive2d: "_SDFFunc", o: float) -> _F:  # type: ignore[name-defined]
+def opRevolution(p: Points3D, primitive2d: "_SDFFunc", o: float) -> Distances:  # type: ignore[name-defined]
     """Revolve a 2-D primitive around the Y axis with offset *o*."""
     q = vec2(length(p[..., [0, 2]]) - o, p[..., 1])
     return primitive2d(q)
 
 
-def opExtrusion(p: _F, primitive2d: "_SDFFunc", h: float) -> _F:  # type: ignore[name-defined]
+def opExtrusion(p: Points3D, primitive2d: "_SDFFunc", h: float) -> Distances:  # type: ignore[name-defined]
     """Extrude a 2-D primitive along Z to half-height *h*."""
     d = primitive2d(p[..., :2])
     w = vec2(d, np.abs(p[..., 2]) - h)
     return np.minimum(np.maximum(w[..., 0], w[..., 1]), 0.0) + length(np.maximum(w, 0.0))
 
 
-def opElongate1(p: _F, primitive3d: "_SDFFunc", h: _F) -> _F:  # type: ignore[name-defined]
+def opElongate1(p: Points3D, primitive3d: "_SDFFunc", h: FloatArray) -> Distances:  # type: ignore[name-defined]
     """Elongate by clamping *p* to ``[-h, h]`` (type 1)."""
     q = p - clamp(p, -h, h)
     return primitive3d(q)
 
 
-def opElongate2(p: _F, primitive3d: "_SDFFunc", h: _F) -> _F:  # type: ignore[name-defined]
+def opElongate2(p: Points3D, primitive3d: "_SDFFunc", h: FloatArray) -> Distances:  # type: ignore[name-defined]
     """Elongate by folding *p* beyond ``[-h, h]`` (type 2, exact)."""
     q = np.abs(p) - h
     return primitive3d(np.maximum(q, 0.0)) + np.minimum(np.max(q, axis=-1), 0.0)
 
 
-def opSymX(p: _F, primitive3d: "_SDFFunc") -> _F:  # type: ignore[name-defined]
+def opSymX(p: Points3D, primitive3d: "_SDFFunc") -> Distances:  # type: ignore[name-defined]
     """Mirror the primitive in the YZ plane."""
     p = p.copy()
     p[..., 0] = np.abs(p[..., 0])
     return primitive3d(p)
 
 
-def opSymXZ(p: _F, primitive3d: "_SDFFunc") -> _F:  # type: ignore[name-defined]
+def opSymXZ(p: Points3D, primitive3d: "_SDFFunc") -> Distances:  # type: ignore[name-defined]
     """Mirror the primitive in both YZ and XY planes."""
     p = p.copy()
     p[..., 0] = np.abs(p[..., 0])
@@ -486,26 +496,26 @@ def opSymXZ(p: _F, primitive3d: "_SDFFunc") -> _F:  # type: ignore[name-defined]
     return primitive3d(p)
 
 
-def opRepetition(p: _F, s: _F, primitive3d: "_SDFFunc") -> _F:  # type: ignore[name-defined]
+def opRepetition(p: Points3D, s: FloatArray, primitive3d: "_SDFFunc") -> Distances:  # type: ignore[name-defined]
     """Tile the primitive infinitely with cell size *s*."""
     q = p - s * np.round(p / s)
     return primitive3d(q)
 
 
-def opLimitedRepetition(p: _F, s: _F, l: _F, primitive3d: "_SDFFunc") -> _F:  # type: ignore[name-defined]
+def opLimitedRepetition(p: Points3D, s: FloatArray, l: FloatArray, primitive3d: "_SDFFunc") -> Distances:  # type: ignore[name-defined]
     """Tile the primitive with cell size *s*, limited to ``[-l, l]`` repetitions."""
     q = p - s * clamp(np.round(p / s), -l, l)
     return primitive3d(q)
 
 
-def opDisplace(p: _F, primitive3d: "_SDFFunc") -> _F:  # type: ignore[name-defined]
+def opDisplace(p: Points3D, primitive3d: "_SDFFunc") -> Distances:  # type: ignore[name-defined]
     """Add sinusoidal displacement noise to the primitive."""
     d1 = primitive3d(p)
     d2 = np.sin(20.0 * p[..., 0]) * np.sin(20.0 * p[..., 1]) * np.sin(20.0 * p[..., 2])
     return d1 + d2
 
 
-def opTwist(p: _F, primitive3d: "_SDFFunc", k: float) -> _F:  # type: ignore[name-defined]
+def opTwist(p: Points3D, primitive3d: "_SDFFunc", k: float) -> Distances:  # type: ignore[name-defined]
     """Twist the primitive around Y with frequency *k*."""
     c = np.cos(k * p[..., 1]);  s = np.sin(k * p[..., 1])
     x = c * p[..., 0] - s * p[..., 2]
@@ -513,7 +523,7 @@ def opTwist(p: _F, primitive3d: "_SDFFunc", k: float) -> _F:  # type: ignore[nam
     return primitive3d(vec3(x, p[..., 1], z))
 
 
-def opCheapBend(p: _F, primitive3d: "_SDFFunc", k: float) -> _F:  # type: ignore[name-defined]
+def opCheapBend(p: Points3D, primitive3d: "_SDFFunc", k: float) -> Distances:  # type: ignore[name-defined]
     """Bend the primitive around the Y axis with frequency *k*."""
     c = np.cos(k * p[..., 0]);  s = np.sin(k * p[..., 0])
     x = c * p[..., 0] - s * p[..., 1]
@@ -521,7 +531,7 @@ def opCheapBend(p: _F, primitive3d: "_SDFFunc", k: float) -> _F:  # type: ignore
     return primitive3d(vec3(x, y, p[..., 2]))
 
 
-def opTx(p: _F, rot: _F, trans: _F, primitive3d: "_SDFFunc") -> _F:  # type: ignore[name-defined]
+def opTx(p: Points3D, rot: FloatArray, trans: FloatArray, primitive3d: "_SDFFunc") -> Distances:  # type: ignore[name-defined]
     """Apply rotation *rot* and translation *trans* to the primitive.
 
     *rot* is a ``(3, 3)`` rotation matrix; the inverse (transpose) is applied

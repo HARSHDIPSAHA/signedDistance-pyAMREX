@@ -2,28 +2,36 @@
 
 from __future__ import annotations
 
-from typing import Callable, Sequence, Tuple
+import os
+from collections.abc import Callable, Sequence
+from typing import TypeAlias
 
 import numpy as np
-import numpy.typing as npt
 
 from . import primitives as sdf
+from .primitives import Points3D, Distances
 
-# ---------------------------------------------------------------------------
-# Type aliases
-# ---------------------------------------------------------------------------
-_Array = npt.NDArray[np.floating]
-_SDFFunc = Callable[[_Array], _Array]
+SDFFunc: TypeAlias = Callable[[Points3D], Distances]
+_Bounds3D = tuple[tuple[float, float], tuple[float, float], tuple[float, float]]
+_Resolution3D = tuple[int, int, int]
+
+
+def save_npy(path: str, phi: np.ndarray) -> None:
+    """Save *phi* array to *path* (creates parent directories if needed)."""
+    out_dir = os.path.dirname(path)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+    np.save(path, phi)
 
 
 # ===========================================================================
 # Base class
 # ===========================================================================
 
-class Geometry3D:
+class SDF3D:
     """Base class for 3D signed-distance-function geometries.
 
-    A ``Geometry3D`` wraps a callable ``func(p) -> distances`` where *p* is
+    A ``SDF3D`` wraps a callable ``func(p) -> distances`` where *p* is
     a ``(..., 3)`` array of 3D points and the return value is a ``(...)``
     array of signed distances.
 
@@ -34,82 +42,162 @@ class Geometry3D:
     - Rotations:          :meth:`rotate_x`, :meth:`rotate_y`, :meth:`rotate_z`
     """
 
-    def __init__(self, func: _SDFFunc) -> None:
-        self._func = func
+    def __init__(self, func: SDFFunc) -> None:
+        self.func = func
 
-    def sdf(self, p: _Array) -> _Array:
+    def sdf(self, p: Points3D) -> Distances:
         """Evaluate signed distance at *p* (shape ``(..., 3)``)."""
-        return self._func(p)
+        return self.func(p)
 
-    def __call__(self, p: _Array) -> _Array:
-        return self._func(p)
+    def __call__(self, p: Points3D) -> Distances:
+        return self.func(p)
 
     # ------------------------------------------------------------------
     # Boolean operations
     # ------------------------------------------------------------------
 
-    def union(self, other: Geometry3D) -> Geometry3D:
+    def union(self, other: SDF3D) -> SDF3D:
         """Return the union (min) of this shape and *other*."""
-        return Geometry3D(lambda p: sdf.opUnion(self.sdf(p), other.sdf(p)))
+        return SDF3D(lambda p: sdf.opUnion(self.sdf(p), other.sdf(p)))
 
-    def subtract(self, other: Geometry3D) -> Geometry3D:
+    def subtract(self, other: SDF3D) -> SDF3D:
         """Subtract *other* from this shape."""
-        return Geometry3D(lambda p: sdf.opSubtraction(other.sdf(p), self.sdf(p)))
+        return SDF3D(lambda p: sdf.opSubtraction(other.sdf(p), self.sdf(p)))
 
-    def intersect(self, other: Geometry3D) -> Geometry3D:
+    def intersect(self, other: SDF3D) -> SDF3D:
         """Return the intersection (max) of this shape and *other*."""
-        return Geometry3D(lambda p: sdf.opIntersection(self.sdf(p), other.sdf(p)))
+        return SDF3D(lambda p: sdf.opIntersection(self.sdf(p), other.sdf(p)))
+
+    # Operator shorthands: A | B → union, A - B → subtract, A / B → intersect
+    def __or__(self, other: SDF3D) -> SDF3D:
+        return self.union(other)
+
+    def __sub__(self, other: SDF3D) -> SDF3D:
+        return self.subtract(other)
+
+    def __truediv__(self, other: SDF3D) -> SDF3D:
+        return self.intersect(other)
 
     # ------------------------------------------------------------------
     # Modifiers
     # ------------------------------------------------------------------
 
-    def round(self, rad: float) -> Geometry3D:
+    def round(self, rad: float) -> SDF3D:
         """Round the surface outward by *rad*."""
-        return Geometry3D(lambda p: sdf.opRound(p, self.sdf, rad))
+        return SDF3D(lambda p: sdf.opRound(p, self.sdf, rad))
 
-    def onion(self, thickness: float) -> Geometry3D:
+    def onion(self, thickness: float) -> SDF3D:
         """Turn the solid into a hollow shell of *thickness*."""
-        return Geometry3D(lambda p: sdf.opOnion(self.sdf(p), thickness))
+        return SDF3D(lambda p: sdf.opOnion(self.sdf(p), thickness))
 
     # ------------------------------------------------------------------
     # Transforms
     # ------------------------------------------------------------------
 
-    def translate(self, tx: float, ty: float, tz: float) -> Geometry3D:
+    def translate(self, tx: float, ty: float, tz: float) -> SDF3D:
         """Translate by ``(tx, ty, tz)``."""
         t = np.array([tx, ty, tz])
-        return Geometry3D(lambda p: self.sdf(p - t))
+        return SDF3D(lambda p: self.sdf(p - t))
 
-    def scale(self, s: float) -> Geometry3D:
+    def scale(self, s: float) -> SDF3D:
         """Uniformly scale by factor *s*."""
-        return Geometry3D(lambda p: sdf.opScale(p, s, self.sdf))
+        return SDF3D(lambda p: sdf.opScale(p, s, self.sdf))
 
-    def elongate(self, hx: float, hy: float, hz: float) -> Geometry3D:
+    def elongate(self, hx: float, hy: float, hz: float) -> SDF3D:
         """Elongate along each axis by ``(hx, hy, hz)``."""
         h = np.array([hx, hy, hz])
-        return Geometry3D(lambda p: sdf.opElongate2(p, self.sdf, h))
+        return SDF3D(lambda p: sdf.opElongate2(p, self.sdf, h))
 
-    def rotate_x(self, angle_rad: float) -> Geometry3D:
+    def rotate_x(self, angle_rad: float) -> SDF3D:
         """Rotate around the X axis by *angle_rad* radians."""
         c = np.cos(angle_rad)
         s = np.sin(angle_rad)
         rot = np.array([[1.0, 0.0, 0.0], [0.0, c, -s], [0.0, s, c]])
-        return Geometry3D(lambda p: sdf.opTx(p, rot, np.zeros(3), self.sdf))
+        return SDF3D(lambda p: sdf.opTx(p, rot, np.zeros(3), self.sdf))
 
-    def rotate_y(self, angle_rad: float) -> Geometry3D:
+    def rotate_y(self, angle_rad: float) -> SDF3D:
         """Rotate around the Y axis by *angle_rad* radians."""
         c = np.cos(angle_rad)
         s = np.sin(angle_rad)
         rot = np.array([[c, 0.0, s], [0.0, 1.0, 0.0], [-s, 0.0, c]])
-        return Geometry3D(lambda p: sdf.opTx(p, rot, np.zeros(3), self.sdf))
+        return SDF3D(lambda p: sdf.opTx(p, rot, np.zeros(3), self.sdf))
 
-    def rotate_z(self, angle_rad: float) -> Geometry3D:
+    def rotate_z(self, angle_rad: float) -> SDF3D:
         """Rotate around the Z axis by *angle_rad* radians."""
         c = np.cos(angle_rad)
         s = np.sin(angle_rad)
         rot = np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
-        return Geometry3D(lambda p: sdf.opTx(p, rot, np.zeros(3), self.sdf))
+        return SDF3D(lambda p: sdf.opTx(p, rot, np.zeros(3), self.sdf))
+
+    # ------------------------------------------------------------------
+    # Grid and AMReX output
+    # ------------------------------------------------------------------
+
+    def to_numpy(self, bounds: _Bounds3D, resolution: _Resolution3D) -> np.ndarray:
+        """Sample this SDF on a uniform 3-D cell-centred grid.
+
+        Parameters
+        ----------
+        bounds:
+            ``((x0, x1), (y0, y1), (z0, z1))`` physical extents of the domain.
+        resolution:
+            ``(nx, ny, nz)`` number of cells along each axis.
+
+        Returns
+        -------
+        numpy.ndarray
+            Shape ``(nz, ny, nx)`` array of signed distances, z-first indexing.
+        """
+        (x0, x1), (y0, y1), (z0, z1) = bounds
+        nx, ny, nz = resolution
+        xs = np.linspace(x0, x1, nx, endpoint=False) + (x1 - x0) / (2.0 * nx)
+        ys = np.linspace(y0, y1, ny, endpoint=False) + (y1 - y0) / (2.0 * ny)
+        zs = np.linspace(z0, z1, nz, endpoint=False) + (z1 - z0) / (2.0 * nz)
+        Z, Y, X = np.meshgrid(zs, ys, xs, indexing="ij")
+        p = np.stack([X, Y, Z], axis=-1)
+        return self.sdf(p)
+
+    def to_multifab(self, grid) -> object:
+        """Evaluate this SDF on *grid* and return a filled MultiFab.
+
+        Parameters
+        ----------
+        grid:
+            A :class:`~sdf3d.amrex.MultiFabGrid3D` instance.
+
+        Returns
+        -------
+        amrex.space3d.MultiFab
+        """
+        import amrex.space3d as amr
+        from . import primitives as _sdf
+
+        dx = grid.geom.data().CellSize()
+        if hasattr(grid.geom, "ProbLoArray"):
+            prob_lo = grid.geom.ProbLoArray()
+        elif hasattr(grid.geom, "ProbLo"):
+            prob_lo = np.array(grid.geom.ProbLo())
+        else:
+            raise AttributeError("Geometry has no ProbLoArray/ProbLo accessor")
+
+        mf = amr.MultiFab(grid.ba, grid.dm, 1, 0)
+        for mfi in mf:
+            arr = mf.array(mfi).to_numpy()
+            bx  = mfi.validbox()
+            i_lo, j_lo, k_lo = bx.lo_vect
+            i_hi, j_hi, k_hi = bx.hi_vect
+
+            i = np.arange(i_lo, i_hi + 1)
+            j = np.arange(j_lo, j_hi + 1)
+            k = np.arange(k_lo, k_hi + 1)
+            x = (i + 0.5) * dx[0] + prob_lo[0]
+            y = (j + 0.5) * dx[1] + prob_lo[1]
+            z = (k + 0.5) * dx[2] + prob_lo[2]
+            Z, Y, X = np.meshgrid(z, y, x, indexing="ij")
+
+            view = arr[:, :, :, 0] if arr.ndim == 4 else arr[:, :, :, 0, 0]
+            view[...] = self.sdf(_sdf.vec3(X, Y, Z))
+        return mf
 
     # ------------------------------------------------------------------
     # Visualisation helpers
@@ -158,9 +246,7 @@ class Geometry3D:
             print(f"  save_png: {exc} — skipping")
             return
 
-        from .grid import sample_levelset_3d
-
-        phi = sample_levelset_3d(self, bounds, resolution)
+        phi = self.to_numpy(bounds, resolution)
         if phi.min() >= 0 or phi.max() <= 0:
             print(f"  save_png: no zero crossing — skipping {path.name}")
             return
@@ -234,14 +320,14 @@ class Geometry3D:
 # Primitive shapes
 # ===========================================================================
 
-class Sphere3D(Geometry3D):
+class Sphere3D(SDF3D):
     """Sphere centred at origin with given *radius*."""
 
     def __init__(self, radius: float) -> None:
         super().__init__(lambda p: sdf.sdSphere(p, radius))
 
 
-class Box3D(Geometry3D):
+class Box3D(SDF3D):
     """Axis-aligned box with *half_size* ``(hx, hy, hz)`` centred at origin."""
 
     def __init__(self, half_size: Sequence[float]) -> None:
@@ -249,7 +335,7 @@ class Box3D(Geometry3D):
         super().__init__(lambda p: sdf.sdBox(p, b))
 
 
-class RoundBox3D(Geometry3D):
+class RoundBox3D(SDF3D):
     """Axis-aligned box with corner *radius* and *half_size* ``(hx, hy, hz)``."""
 
     def __init__(self, half_size: Sequence[float], radius: float) -> None:
@@ -257,7 +343,7 @@ class RoundBox3D(Geometry3D):
         super().__init__(lambda p: sdf.sdRoundBox(p, b, radius))
 
 
-class Cylinder3D(Geometry3D):
+class Cylinder3D(SDF3D):
     """Infinite cylinder.
 
     Parameters
@@ -273,7 +359,7 @@ class Cylinder3D(Geometry3D):
         super().__init__(lambda p: sdf.sdCylinder(p, c))
 
 
-class ConeExact3D(Geometry3D):
+class ConeExact3D(SDF3D):
     """Exact (signed) cone.
 
     Parameters
@@ -289,7 +375,7 @@ class ConeExact3D(Geometry3D):
         super().__init__(lambda p: sdf.sdConeExact(p, c, height))
 
 
-class Torus3D(Geometry3D):
+class Torus3D(SDF3D):
     """Torus in the XZ plane.
 
     Parameters
@@ -304,43 +390,6 @@ class Torus3D(Geometry3D):
         super().__init__(lambda p: sdf.sdTorus(p, t))
 
 
-# ===========================================================================
-# Boolean operation classes
-# ===========================================================================
-
-class Union3D(Geometry3D):
-    """Union of two or more 3-D geometries (minimum SDF)."""
-
-    def __init__(self, *geoms: Geometry3D) -> None:
-        def _sdf(p: _Array) -> _Array:
-            d = geoms[0].sdf(p)
-            for g in geoms[1:]:
-                d = sdf.opUnion(d, g.sdf(p))
-            return d
-
-        super().__init__(_sdf)
-
-
-class Intersection3D(Geometry3D):
-    """Intersection of two or more 3-D geometries (maximum SDF)."""
-
-    def __init__(self, *geoms: Geometry3D) -> None:
-        def _sdf(p: _Array) -> _Array:
-            d = geoms[0].sdf(p)
-            for g in geoms[1:]:
-                d = sdf.opIntersection(d, g.sdf(p))
-            return d
-
-        super().__init__(_sdf)
-
-
-class Subtraction3D(Geometry3D):
-    """Subtract *cutter* from *base*."""
-
-    def __init__(self, base: Geometry3D, cutter: Geometry3D) -> None:
-        super().__init__(
-            lambda p: sdf.opSubtraction(cutter.sdf(p), base.sdf(p))
-        )
 
 
 # ===========================================================================
@@ -386,8 +435,6 @@ def save_plotly_html_grid(
         print(f"  save_plotly_html_grid: {exc} — skipping")
         return
 
-    from .grid import sample_levelset_3d
-
     path = Path(path)
     if path.parent == Path('.'):
         path = Path("output") / path
@@ -408,7 +455,7 @@ def save_plotly_html_grid(
         nx, ny, nz = resolution
         (x0, x1), (y0, y1), (z0, z1) = panel_bounds
 
-        phi = sample_levelset_3d(geom, panel_bounds, resolution)
+        phi = geom.to_numpy(panel_bounds, resolution)
 
         xs = np.linspace(x0, x1, nx)
         ys = np.linspace(y0, y1, ny)

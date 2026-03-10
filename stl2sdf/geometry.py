@@ -8,7 +8,7 @@ from typing import Optional, Union
 
 import numpy as np
 
-from sdf3d.geometry import Geometry3D as _Geometry3D
+from sdf3d.geometry import SDF3D as _SDF3D
 from ._math import _stl_to_triangles
 
 
@@ -16,12 +16,12 @@ def stl_to_geometry(
     path: Union[str, Path],
     *,
     ray_dir: Optional[np.ndarray] = None,
-) -> _Geometry3D:
-    """Load an STL file and return a :class:`sdf3d.geometry.Geometry3D`.
+) -> _SDF3D:
+    """Load an STL file and return a :class:`sdf3d.geometry.SDF3D`.
 
-    The returned object has the same interface as analytic primitives
-    (``Sphere3D``, ``Box3D``, etc.) and can be combined with them using
-    ``.union()``, ``.subtract()``, ``.translate()``, etc.
+    The returned :class:`sdf3d.geometry.SDF3D` object has the same interface
+    as analytic primitives (``Sphere3D``, ``Box3D``, etc.) and can be combined
+    with them using ``.union()``, ``.subtract()``, ``.translate()``, etc.
 
     Sign convention: phi < 0 inside, phi = 0 on surface, phi > 0 outside.
     Requires a **watertight** mesh.  SDF evaluation is parallelised across
@@ -39,11 +39,9 @@ def stl_to_geometry(
     --------
     >>> from stl2sdf import stl_to_geometry
     >>> from sdf3d import Sphere3D
-    >>> from sdf3d.grid import sample_levelset_3d
-    >>>
     >>> wheel = stl_to_geometry("mars_wheel.stl")
     >>> combined = wheel.union(Sphere3D(0.3).translate(0.5, 0, 0))
-    >>> phi = sample_levelset_3d(combined, bounds=((-1,1),(-1,1),(-1,1)), resolution=(32,32,32))
+    >>> phi = combined.to_numpy(bounds=((-1,1),(-1,1),(-1,1)), resolution=(32,32,32))
     """
     from pysdf import SDF  # lazy import: clear ImportError if pysdf is missing
 
@@ -71,7 +69,7 @@ def stl_to_geometry(
         # pysdf: positive inside, (N,1) float32 — negate and cast to match our convention
         return -_sdf_obj(pts).reshape(shape).astype(np.float64)
 
-    return _Geometry3D(_sdf)
+    return _SDF3D(_sdf)
 
 
 def mesh_bounds(path, pad_frac: float = 0.10) -> tuple:

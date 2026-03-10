@@ -10,11 +10,11 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.20.0",
-    "pysdf>=0.1.9",
     "scipy>=1.9",
     "h5py>=3.0",
 ]
 
+# User-facing extras: install with `pip install sdf-library[viz]` or `[stl]`
 [project.optional-dependencies]
 viz = [
     "matplotlib>=3.5.0",
@@ -25,6 +25,12 @@ viz = [
     "scikit-learn>=1.4",
     "Pillow>=9.0",
 ]
+stl = [
+    # C++ library for fast SDF evaluation of STL meshes.
+    # Requires a C++14 compiler; not always available as a pre-built wheel.
+    # Install: pip install pysdf   (or conda install -c conda-forge pysdf)
+    "pysdf>=0.1.9",
+]
 
 # Pick the variant matching your CUDA version; only one should be installed.
 # cupy-cuda11x for CUDA 11, cupy-cuda12x for CUDA 12.
@@ -32,7 +38,14 @@ gpu = [
     "cupy-cuda12x>=12.0",
 ]
 
-dev = ["pytest>=7.0"]
+# Developer tools: install with `uv sync --group dev`
+# These are NOT shipped to end users.
+[dependency-groups]
+dev = [
+    "pytest>=7.0",
+    "ty>=0.0.1",
+    "marimo>=0.17.6",
+]
 # pyAMReX is NOT on PyPI — install separately via:
 #   conda create -n pyamrex -c conda-forge pyamrex
 # No entry here; uv.lock only covers resolvable packages.

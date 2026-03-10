@@ -8,42 +8,39 @@ based on Inigo Quilez's distance function collection.
 Implemented features
 --------------------
 - Primitive shapes: Circle, Box, triangles, polygons, stars, arcs, ...
-- Boolean operations: Union, Intersection, Subtraction
+- Boolean operations: ``|`` (union), ``-`` (subtraction), ``/`` (intersection)
 - Transforms: translate, rotate, scale, round, onion
-- Grid sampling: :func:`sample_levelset_2d`
-- AMReX MultiFab output: :class:`SDFLibrary2D` (requires pyAMReX 2-D build)
+- Grid sampling: :meth:`SDF2D.to_numpy`
+- AMReX MultiFab output: :class:`MultiFabGrid2D` (requires pyAMReX 2-D build)
 
 Quick start
 -----------
 
 NumPy mode (no AMReX required)::
 
-    from sdf2d import Circle2D, Box2D, Union2D, sample_levelset_2d
-    import numpy as np
+    from sdf2d import Circle2D, Box2D
 
     circle = Circle2D(radius=0.3)
     box    = Box2D(half_size=(0.2, 0.2)).translate(0.4, 0.0)
-    shape  = Union2D(circle, box)
+    shape  = circle | box              # union operator
 
-    bounds     = ((-1.0, 1.0), (-1.0, 1.0))
-    resolution = (512, 512)
-    phi = sample_levelset_2d(shape, bounds, resolution)
+    phi = shape.to_numpy(bounds=((-1.0, 1.0), (-1.0, 1.0)), resolution=(512, 512))
 
 AMReX mode::
 
     import amrex.space2d as amr
-    from sdf2d import SDFLibrary2D
+    from sdf2d import MultiFabGrid2D
 
     amr.initialize([])
     # ... set up geom, ba, dm ...
-    lib      = SDFLibrary2D(geom, ba, dm)
-    levelset = lib.circle(center=(0.0, 0.0), radius=0.3)
+    grid     = MultiFabGrid2D(geom, ba, dm)
+    mf       = Circle2D(0.3).to_multifab(grid)
     amr.finalize()
 """
 
 from .geometry import (
     # Base class
-    Geometry2D,
+    SDF2D,
 
     # Primitive shapes
     Circle2D,
@@ -101,20 +98,16 @@ from .geometry import (
     QuadraticCircle2D,
     Hyperbola2D,
 
-    # Boolean operations
-    Union2D,
-    Intersection2D,
-    Subtraction2D,
 )
 
-from .grid import sample_levelset_2d, save_npy
-from .amrex import SDFLibrary2D
+from .geometry import save_npy
+from .amrex import MultiFabGrid2D
 
 __version__ = "0.2.0"
 
 __all__ = [
     # Base
-    "Geometry2D",
+    "SDF2D",
 
     # Primitive shapes
     "Circle2D",
@@ -172,15 +165,9 @@ __all__ = [
     "QuadraticCircle2D",
     "Hyperbola2D",
 
-    # Boolean operations
-    "Union2D",
-    "Intersection2D",
-    "Subtraction2D",
-
     # Grid utilities
-    "sample_levelset_2d",
     "save_npy",
 
     # AMReX integration
-    "SDFLibrary2D",
+    "MultiFabGrid2D",
 ]

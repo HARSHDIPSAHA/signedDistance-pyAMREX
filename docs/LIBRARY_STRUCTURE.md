@@ -19,9 +19,9 @@ A 2D and 3D Signed Distance Function library with STL mesh conversion and option
 ### `sdf2d/` contents
 
 - `primitives.py` — NumPy implementations of all ~50 2D SDF formulas (`sdCircle`, `sdBox2D`, …) and `opTx2D`. Re-exports everything from `_sdf_common`. No AMReX dependency.
-- `geometry.py` — All 2D geometry classes: `Circle2D`, `Box2D`, `Hexagon2D`, … plus `Union2D`, `Intersection2D`, `Subtraction2D`. Transforms: `translate`, `rotate`, `scale`, `round`, `onion`. Every class wraps a lambda over `primitives` and exposes `sdf(p)`.
+- `geometry.py` — All 2D geometry classes: `Circle2D`, `Box2D`, `Hexagon2D`, … Operators `|`, `-`, `/` compose shapes (union, subtraction, intersection). Transforms: `translate`, `rotate`, `scale`, `round`, `onion`. Every class wraps a lambda over `primitives` and exposes `sdf(p)`.
 - `grid.py` — `sample_levelset_2d(geom, bounds, resolution)` → `ndarray` of shape `(ny, nx)`. Also provides `save_npy`.
-- `amrex.py` — `SDFLibrary2D` for AMReX `MultiFab` output. Requires `amrex.space2d`. Import-guarded so the module loads without AMReX.
+- `amrex.py` — `MultiFabGrid2D`: a named grid context for AMReX `MultiFab` output. Construct once with `(geom, ba, dm)`. Use `shape.to_multifab(grid)` to create + fill a MultiFab. Boolean ops on raw MultiFabs: `grid.union(a, b)`, `grid.subtract(base, cutter)`, `grid.intersect(a, b)`, `grid.negate(a)`. Requires `amrex.space2d`. Import-guarded so the module loads without AMReX.
 - `__init__.py` — Re-exports all public symbols.
 
 ---
@@ -29,12 +29,12 @@ A 2D and 3D Signed Distance Function library with STL mesh conversion and option
 ### `sdf3d/` contents
 
 - `primitives.py` — NumPy implementations of all ~30 3D SDF formulas (`sdSphere`, `sdBox`, …), smooth boolean ops (`opSmoothUnion`, …), and space-warps (`opElongate`, `opRevolution`, `opExtrusion`, `opTwist`, …). Re-exports everything from `_sdf_common`. No AMReX dependency.
-- `geometry.py` — All 3D geometry classes: `Sphere3D`, `Box3D`, `RoundBox3D`, `Cylinder3D`, `ConeExact3D`, `Torus3D`, and `Union3D` / `Intersection3D` / `Subtraction3D`. Transforms: `translate`, `rotate_x/y/z`, `scale`, `elongate`, `round`, `onion`.
+- `geometry.py` — All 3D geometry classes: `Sphere3D`, `Box3D`, `RoundBox3D`, `Cylinder3D`, `ConeExact3D`, `Torus3D`, … Operators `|`, `-`, `/` compose shapes (union, subtraction, intersection). Transforms: `translate`, `rotate_x/y/z`, `scale`, `elongate`, `round`, `onion`.
 - `grid.py` — `sample_levelset_3d(geom, bounds, resolution)` → `ndarray` of shape `(nz, ny, nx)`. Also provides `save_npy`.
-- `amrex.py` — `SDFLibrary3D` for AMReX `MultiFab` output. Requires `amrex.space3d`. Import-guarded so the module loads without AMReX.
+- `amrex.py` — `MultiFabGrid3D`: a named grid context for AMReX `MultiFab` output. Construct once with `(geom, ba, dm)`. Use `shape.to_multifab(grid)` to create + fill a MultiFab. Boolean ops on raw MultiFabs: `grid.union(a, b)`, `grid.subtract(base, cutter)`, `grid.intersect(a, b)`, `grid.negate(a)`. Requires `amrex.space3d`. Import-guarded so the module loads without AMReX.
 - `examples/` — High-level geometry assemblies:
-  - `nato_stanag.py` — `NATOFragment(lib, …)`: NATO STANAG fragmentation cylinder with conical nose.
-  - `rocket_assembly.py` — `RocketAssembly(lib, …)`: multi-part rocket with body, nose, and fins.
+  - `nato_stanag.py` — `NATOFragment(…)`: NATO STANAG fragmentation cylinder with conical nose.
+  - `rocket_assembly.py` — `RocketAssembly(…)`: multi-part rocket with body, nose, and fins.
 - `__init__.py` — Re-exports all public symbols.
 
 ---
@@ -48,7 +48,7 @@ Requires a **watertight** (closed, 2-manifold) mesh for correct sign determinati
   - `_stl_to_triangles(path)` → `(F, 3, 3)` float64 — binary + ASCII loader
   - `_triangles_to_sdf(points, triangles)` → `(N,)` — Ericson closest-point + Möller–Trumbore sign
 - `geometry.py` — Public API:
-  - `stl_to_geometry(path, *, ray_dir=None)` → `Geometry3D` — load STL and return a composable geometry object
+  - `stl_to_geometry(path, *, ray_dir=None)` → `SDF3D` — load STL and return a composable geometry object
 - `__init__.py` — Re-exports `stl_to_geometry`.
 
 **Algorithms:**
@@ -93,7 +93,8 @@ All tests pass with `pytest` and require only `numpy`. AMReX is not needed.
 | `test_sdf3d_grid.py` | `sample_levelset_3d` shape/sign, `save_npy` round-trip |
 | `test_complex.py` | `NATOFragment` and `RocketAssembly` (mock lib, no AMReX) |
 | `test_stl2sdf.py` | `_stl_to_triangles` (binary + ASCII), `_triangles_to_sdf` (7 Voronoi regions, ray casting, sign), `stl_to_geometry` — all synthetic, no downloads |
-| `test_amrex.py` | `SDFLibrary2D` and `SDFLibrary3D` — **skipped automatically without pyAMReX** |
+| `test_amrex_2d.py` | `MultiFabGrid2D` — **skipped automatically without pyAMReX** |
+| `test_amrex_3d.py` | `MultiFabGrid3D` — **skipped automatically without pyAMReX; run in isolation** |
 
 ```bash
 uv run pytest tests/ -v
@@ -113,9 +114,9 @@ Standalone runnable demos. Outputs (PNG, HTML, NPY) are written to `examples/`.
 
 | File | Description |
 |------|-------------|
-| `sdf3d/union_example.py` | Two spheres joined with `Union3D` |
-| `sdf3d/intersection_example.py` | Sphere–sphere intersection |
-| `sdf3d/subtraction_example.py` | Sphere with spherical cavity via `Subtraction3D` |
+| `sdf3d/union_example.py` | Two spheres joined with `\|` operator |
+| `sdf3d/intersection_example.py` | Sphere–sphere intersection with `/` operator |
+| `sdf3d/subtraction_example.py` | Sphere with spherical cavity via `-` operator |
 | `sdf3d/elongation_example.py` | Sphere elongated into a capsule |
 | `sdf3d/complex_example.py` | Chains all four operations, one PNG per step |
 | `stl2sdf/nasa_shapes_demo.py` | Downloads 4 NASA meshes (Orion/CubeSat/wheel/Eros), saves Plotly HTML report |
@@ -130,15 +131,15 @@ User parameters          STL file          Image file
       ↓                     ↓                  ↓
 Geometry classes      stl2sdf.stl_to_geometry  img2sdf.image_to_geometry_2d
 (sdf2d / sdf3d)             ↓                  ↓
-      └──────── Geometry2D / Geometry3D ────────┘
-                     ↓
-             SDF evaluation
-             (primitives.py / RegularGridInterpolator)
-                     ↓
-       Level-set field   φ(x, y[, z]) on a grid
-                     ↓
-       Output:  NumPy ndarray  OR  AMReX MultiFab
+      └───────────── SDF2D / SDF3D ────────────┘
+                        ↓
+                  SDF evaluation
+                  (primitives.py / RegularGridInterpolator)
+                        ↓
+            Level-set field   φ(x, y[, z]) on a grid
+                        ↓
+            Output:  NumPy ndarray  OR  AMReX MultiFab
 ```
 
-- **NumPy path** (no AMReX): `sample_levelset_2d` / `sample_levelset_3d` / `image_to_levelset_2d` → `np.ndarray`
-- **AMReX path**: `SDFLibrary2D` / `SDFLibrary3D` / `SDFLibraryImg2D` → `amr.MultiFab`
+- **NumPy path** (no AMReX): `shape.to_numpy(bounds, resolution)` → `np.ndarray`
+- **AMReX path**: `shape.to_multifab(MultiFabGrid2D/3D)` → `amr.MultiFab`

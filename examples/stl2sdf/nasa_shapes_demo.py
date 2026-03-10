@@ -53,7 +53,6 @@ def _auto_bounds(triangles: np.ndarray, pad_frac: float = 0.10):
 def _process_shape(shape: dict, res: int) -> dict | None:
     from stl2sdf import stl_to_geometry
     from stl2sdf._math import _stl_to_triangles
-    from sdf3d.grid import sample_levelset_3d
 
     stl_path = _EXAMPLES_DIR / f"{shape['stem']}.stl"
     npy_path = _OUTPUT_DIR / f"{shape['stem']}_sdf.npy"
@@ -71,7 +70,7 @@ def _process_shape(shape: dict, res: int) -> dict | None:
 
     geom = stl_to_geometry(stl_path)
     t0   = time.perf_counter()
-    phi  = sample_levelset_3d(geom, bounds, (res, res, res))
+    phi  = geom.to_numpy(bounds, (res, res, res))
     elapsed = time.perf_counter() - t0
 
     inside_frac = (phi < 0).mean() * 100

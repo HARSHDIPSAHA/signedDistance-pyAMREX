@@ -2,41 +2,30 @@
 
 Usage::
 
-    from sdf3d import SDFLibrary3D
-    from sdf3d.complex import NATOFragment
+    from sdf3d.examples import NATOFragment
 
-    fragment_mf, fragment_geom = NATOFragment(lib, diameter=14.30e-3, L_over_D=1.09)
+    geom = NATOFragment(diameter=14.30e-3, L_over_D=1.09)
 """
 
 from __future__ import annotations
 
-from typing import Tuple, TYPE_CHECKING
-
 import numpy as np
 
 from .. import primitives as sdf
-from sdf3d.geometry import Cylinder3D, Box3D, Intersection3D, Union3D, Geometry3D
-
-if TYPE_CHECKING:
-    from sdf3d.amrex import SDFLibrary3D
-    import amrex.space3d as amr
+from sdf3d.geometry import Cylinder3D, Box3D, SDF3D
 
 
 def NATOFragment(
-    lib: "SDFLibrary3D",
     diameter: float = 14.30e-3,
     L_over_D: float = 1.09,
     cone_angle_deg: float = 20.0,
-) -> "Tuple[amr.MultiFab, Geometry3D]":
+) -> SDF3D:
     """Build a NATO STANAG-4496 fragment geometry.
 
     The fragment is a cylinder capped with a cone (ogive nose).
 
     Parameters
     ----------
-    lib:
-        An :class:`~sdf3d.amrex.SDFLibrary3D` instance that defines the
-        AMReX grid on which to evaluate the geometry.
     diameter:
         Fragment diameter in metres (default 14.3 mm).
     L_over_D:
@@ -47,9 +36,9 @@ def NATOFragment(
 
     Returns
     -------
-    tuple
-        ``(MultiFab, Geometry3D)`` — the AMReX level-set field and the
-        composable geometry object.
+    SDF3D
+        The composable geometry object.  To fill an AMReX MultiFab, call
+        ``lib.from_geometry(NATOFragment(...))`` yourself.
     """
     fragment_radius  = diameter / 2.0
     total_length     = diameter * L_over_D
@@ -60,7 +49,7 @@ def NATOFragment(
     cyl_inf  = Cylinder3D(axis_offset=[0.0, 0.0], radius=fragment_radius)
     cyl_box  = Box3D(half_size=[fragment_radius * 1.2, cylinder_height / 2, fragment_radius * 1.2])
     cyl_geom = (
-        Intersection3D(cyl_inf, cyl_box)
+        (cyl_inf / cyl_box)
         .rotate_x(np.pi / 2)
         .translate(0.0, 0.0, cylinder_height / 2)
     )
@@ -70,12 +59,10 @@ def NATOFragment(
         return sdf.sdCappedCone(p, cone_height, 0.0, fragment_radius)
 
     cone_geom = (
-        Geometry3D(_sharp_cone_sdf)
+        SDF3D(_sharp_cone_sdf)
         .rotate_x(np.pi / 2)
         .translate(0.0, 0.0, cylinder_height + cone_height)
     )
 
     # Union of cylinder + cone
-    fragment_geom = Union3D(cyl_geom, cone_geom)
-    fragment_mf   = lib.from_geometry(fragment_geom)
-    return fragment_mf, fragment_geom
+    return cyl_geom | cone_geom

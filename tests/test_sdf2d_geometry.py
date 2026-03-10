@@ -3,8 +3,8 @@
 Every class in sdf2d.geometry is tested for:
 - Correct instantiation
 - sdf() returns correct sign (negative inside, positive outside)
-- Transform methods return new Geometry2D
-- Boolean operation methods return new Geometry2D
+- Transform methods return new SDF2D
+- Boolean operation methods return new SDF2D
 """
 
 import numpy as np
@@ -12,7 +12,7 @@ import numpy.testing as npt
 import pytest
 
 from sdf2d import (
-    Geometry2D,
+    SDF2D,
     Circle2D, Box2D, RoundedBox2D, OrientedBox2D, Segment2D,
     Rhombus2D, Trapezoid2D, Parallelogram2D,
     EquilateralTriangle2D, TriangleIsosceles2D, Triangle2D,
@@ -23,7 +23,6 @@ from sdf2d import (
     Vesica2D, Moon2D, RoundedCross2D, Egg2D, Heart2D, Cross2D, RoundedX2D,
     Polygon2D, Ellipse2D, Parabola2D, ParabolaSegment2D, Bezier2D,
     BlobbyCross2D, Tunnel2D, Stairs2D, QuadraticCircle2D, Hyperbola2D,
-    Union2D, Intersection2D, Subtraction2D,
 )
 
 
@@ -46,13 +45,13 @@ def _grid(n: int = 16) -> np.ndarray:
 # Base class
 # ===========================================================================
 
-class TestGeometry2D:
+class TestSDF2D:
     def test_sdf_callable(self):
-        g = Geometry2D(lambda p: np.zeros(p.shape[:-1]))
+        g = SDF2D(lambda p: np.zeros(p.shape[:-1]))
         assert g.sdf(_grid()).shape == (16, 16)
 
     def test_call_is_sdf(self):
-        g = Geometry2D(lambda p: np.ones(p.shape[:-1]))
+        g = SDF2D(lambda p: np.ones(p.shape[:-1]))
         npt.assert_array_equal(g(_p(0, 0)), g.sdf(_p(0, 0)))
 
     def test_translate_moves_origin(self):
@@ -338,43 +337,43 @@ class TestBoolean2D:
     def test_union_includes_both(self):
         a = Circle2D(0.3)
         b = Box2D((0.3, 0.3)).translate(0.5, 0.0)
-        u = Union2D(a, b)
+        u = a | b
         assert u.sdf(_p(0, 0))[0] < 0      # inside circle
         assert u.sdf(_p(0.5, 0))[0] < 0    # inside box
 
     def test_intersection_excludes_union(self):
         a = Circle2D(0.3)
         b = Circle2D(0.3).translate(0.4, 0.0)
-        i = Intersection2D(a, b)
+        i = a / b
         # Origin is in a but not b
         assert i.sdf(_p(0, 0))[0] > 0
 
     def test_subtraction_removes_cutter(self):
         a = Circle2D(0.4)
         b = Circle2D(0.2)
-        s = Subtraction2D(a, b)
+        s = a - b
         # Origin is inside both → outside the subtraction result
         assert s.sdf(_p(0, 0))[0] > 0
         # Point inside a but outside b → inside subtraction
         assert s.sdf(_p(0.3, 0))[0] < 0
 
-    def test_union_class_is_geometry2d(self):
-        assert isinstance(Union2D(Circle2D(0.3), Box2D((0.2, 0.2))), Geometry2D)
+    def test_union_returns_sdf2d(self):
+        assert isinstance(Circle2D(0.3) | Box2D((0.2, 0.2)), SDF2D)
 
-    def test_method_union_equals_class(self):
+    def test_operator_matches_method_union(self):
         a = Circle2D(0.3)
         b = Box2D((0.2, 0.2))
         p = _grid(8)
-        npt.assert_allclose(a.union(b).sdf(p), Union2D(a, b).sdf(p))
+        npt.assert_allclose((a | b).sdf(p), a.union(b).sdf(p))
 
-    def test_method_subtract_equals_class(self):
+    def test_operator_matches_method_subtract(self):
         a = Circle2D(0.4)
         b = Circle2D(0.2)
         p = _grid(8)
-        npt.assert_allclose(a.subtract(b).sdf(p), Subtraction2D(a, b).sdf(p))
+        npt.assert_allclose((a - b).sdf(p), a.subtract(b).sdf(p))
 
-    def test_method_intersect_equals_class(self):
+    def test_operator_matches_method_intersect(self):
         a = Circle2D(0.3)
         b = Box2D((0.2, 0.2))
         p = _grid(8)
-        npt.assert_allclose(a.intersect(b).sdf(p), Intersection2D(a, b).sdf(p))
+        npt.assert_allclose((a / b).sdf(p), a.intersect(b).sdf(p))
