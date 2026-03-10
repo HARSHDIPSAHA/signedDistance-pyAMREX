@@ -23,7 +23,7 @@ class SDFLibraryImg2D:
 
     Runs the NumPy Chan-Vese pipeline (``img2sdf`` package) to produce an
     ``ImageGeometry2D``, then delegates cell-by-cell SDF evaluation to
-    ``sdf2d.amrex.SDFLibrary2D.from_geometry()``.
+    ``sdf2d.amrex.MultiFabGrid2D.from_geometry()``.
 
     Parameters
     ----------
@@ -66,6 +66,6 @@ class SDFLibraryImg2D:
         img_geom = image_to_geometry_2d(image_path, params, bounds)
 
         # Step 2 — evaluate ImageGeometry2D on the AMReX grid
-        from sdf2d.amrex import SDFLibrary2D
-        lib = SDFLibrary2D(self.geom, self.ba, self.dm)
-        return lib.from_geometry(img_geom)
+        from sdf2d.amrex import MultiFabGrid2D
+        lib = MultiFabGrid2D(self.geom, self.ba, self.dm)
+        return img_geom.to_multifab(lib)

@@ -157,7 +157,7 @@ class SDF3D:
         p = np.stack([X, Y, Z], axis=-1)
         return self.sdf(p)
 
-    def to_multifab(self, grid) -> "amr.MultiFab":
+    def to_multifab(self, grid) -> object:
         """Evaluate this SDF on *grid* and return a filled MultiFab.
 
         Parameters

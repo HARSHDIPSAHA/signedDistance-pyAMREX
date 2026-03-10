@@ -96,9 +96,11 @@ def _computePSNR(image, thresh):
     # Compute the RMSE
     RMSE = root_mean_squared_error(image, thresh)
     
-    # Compute PSNR
-    PSNR = 20 * np.log10(255.0 / RMSE) 
-    
+    # Compute PSNR (perfect match → RMSE=0 → return infinity)
+    if RMSE == 0:
+        return float("inf")
+    PSNR = 20 * np.log10(255.0 / RMSE)
+
     return PSNR
 
 
@@ -173,7 +175,7 @@ def _convertHEDS(image):
     return image
 
 
-def _RemoveSmallObjects(mask: bool, dx: float, minval=0.10):
+def _RemoveSmallObjects(mask: np.ndarray, dx: float, minval=0.10):
     # Create label array
     label_array = label(mask)
     

@@ -7,18 +7,11 @@ name = "sdf-library"
 version = "0.1.0"
 description = "2D and 3D Signed Distance Function library with optional AMReX integration"
 readme = "README.md"
-<<<<<<< amrex-testing
-requires-python = ">=3.9"
-dependencies = [
-    "numpy>=1.20.0",
-=======
 requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.20.0",
-    "pysdf>=0.1.9",
     "scipy>=1.9",
     "h5py>=3.0",
->>>>>>> main
 ]
 
 # User-facing extras: install with `pip install sdf-library[viz]` or `[stl]`
@@ -28,7 +21,9 @@ viz = [
     "scikit-image>=0.19.0",
     "plotly>=5.0",
     "yt>=4.2.1",
-<<<<<<< amrex-testing
+    "opencv-python>=4.5",
+    "scikit-learn>=1.4",
+    "Pillow>=9.0",
 ]
 stl = [
     # C++ library for fast SDF evaluation of STL meshes.
@@ -37,31 +32,20 @@ stl = [
     "pysdf>=0.1.9",
 ]
 
-# Developer tools: install with `uv sync --group dev`
-# These are NOT shipped to end users.
-[dependency-groups]
-dev = [
-    "pytest>=7.0",
-    "ty>=0.0.1",
-    "h5py>=3.0",
-    "scipy>=1.7",
-    "marimo>=0.17.6",
-]
-
-=======
-    "opencv-python>=4.5",
-    "scikit-learn>=1.4",
-    "Pillow>=9.0",
-]
-
 # Pick the variant matching your CUDA version; only one should be installed.
 # cupy-cuda11x for CUDA 11, cupy-cuda12x for CUDA 12.
 gpu = [
     "cupy-cuda12x>=12.0",
 ]
 
-dev = ["pytest>=7.0"]
->>>>>>> main
+# Developer tools: install with `uv sync --group dev`
+# These are NOT shipped to end users.
+[dependency-groups]
+dev = [
+    "pytest>=7.0",
+    "ty>=0.0.1",
+    "marimo>=0.17.6",
+]
 # pyAMReX is NOT on PyPI — install separately via:
 #   conda create -n pyamrex -c conda-forge pyamrex
 # No entry here; uv.lock only covers resolvable packages.

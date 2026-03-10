@@ -58,7 +58,6 @@ def _load_image(image_path: str, params: dict) -> np.ndarray:
 
     try:
         from PIL import Image
-        import numpy as np
         return np.array(Image.open(image_path).convert("L"))
     except ImportError:
         raise ImportError(

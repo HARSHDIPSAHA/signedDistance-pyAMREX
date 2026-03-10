@@ -30,11 +30,11 @@ h = params["Image Properties"]["image height"]   # µm
 bounds = ((0.0, float(w)), (0.0, float(h)))
 
 print("=" * 60)
-print("  img2sdf — HEDS example")
+print("  img2sdf - HEDS example")
 print("=" * 60)
 print(f"  image  : {IMAGE_PATH}")
 print(f"  method : {params['Image Properties']['method']}")
-print(f"  domain : {w} x {h} µm")
+print(f"  domain : {w} x {h} um")
 print()
 
 
@@ -58,7 +58,7 @@ assert n_outside > 0,           "No exterior pixels (phi > 0) — check image / 
 
 print(f"       interior (phi < 0) : {n_inside:6d}  ({100 * n_inside  / total:.1f} %)")
 print(f"       exterior (phi > 0) : {n_outside:6d}  ({100 * n_outside / total:.1f} %)")
-print("       ✓  pySdf sign convention satisfied")
+print("       OK  pySdf sign convention satisfied")
 
 
 # 4.  Build ImageGeometry2D 
@@ -78,9 +78,9 @@ np.testing.assert_allclose(
 assert np.all(geom.subtract(geom).sdf(pts) >= 0), \
     "CSG FAIL: subtract(self, self) must be ≥ 0 everywhere"
 
-print("       ✓  union(self, self)     == self")
-print("       ✓  negate().negate()     == identity")
-print("       ✓  subtract(self, self)  >= 0 everywhere")
+print("       OK  union(self, self)     == self")
+print("       OK  negate().negate()     == identity")
+print("       OK  subtract(self, self)  >= 0 everywhere")
 
 
 
@@ -119,5 +119,5 @@ for f in sorted(OUT_DIR.iterdir()):
     print(f"       {f}")
 
 print("\n" + "=" * 60)
-print("  ALL CHECKS PASSED  —  img2sdf API working correctly")
+print("  ALL CHECKS PASSED - img2sdf API working correctly")
 print("=" * 60)
