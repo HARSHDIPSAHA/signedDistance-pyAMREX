@@ -149,9 +149,12 @@ def _save_shape_html(phi, title, color, filename):
         height=600, width=600,
         scene=dict(
             bgcolor=PANEL,
-            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            zaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False,
+                       showbackground=False),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False,
+                       showbackground=False),
+            zaxis=dict(showgrid=False, zeroline=False, showticklabels=False,
+                       showbackground=False),
             aspectmode="data",
         ),
     )

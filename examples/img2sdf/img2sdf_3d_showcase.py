@@ -51,7 +51,7 @@ except ImportError:
     raise ImportError("Install scikit-image: pip install scikit-image")
 
 try:
-    from scipy.ndimage import zoom
+    from scipy.ndimage import zoom, gaussian_filter
 except ImportError:
     raise ImportError("Install scipy: pip install scipy")
 
@@ -91,6 +91,8 @@ def _mesh3d_trace(phi, color, vis_n=32):
     if phi.shape[0] > vis_n:
         scale = vis_n / phi.shape[0]
         phi = zoom(phi, scale, order=1)
+    # Smooth the phi field to remove noise from Chan-Vese segmentation
+    phi = gaussian_filter(phi, sigma=1.5)
     verts, faces, _, _ = marching_cubes(phi, level=0.0, spacing=(1.0, 1.0, 1.0))
     # marching_cubes returns (axis0=z, axis1=y, axis2=x); map to Plotly (x, y, z)
     x_mc, y_mc, z_mc = verts[:, 2], verts[:, 1], verts[:, 0]
@@ -115,9 +117,12 @@ def _save_shape_html(phi, title, color, filename):
         height=600, width=600,
         scene=dict(
             bgcolor=PANEL,
-            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            zaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False,
+                       showbackground=False),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False,
+                       showbackground=False),
+            zaxis=dict(showgrid=False, zeroline=False, showticklabels=False,
+                       showbackground=False),
             aspectmode="data",
         ),
     )
