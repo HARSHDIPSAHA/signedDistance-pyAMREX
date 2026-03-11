@@ -38,6 +38,10 @@ gpu = [
     "cupy-cuda12x>=12.0",
 ]
 
+hf = [
+    "huggingface-hub>=0.20",
+]
+
 # Developer tools: install with `uv sync --group dev`
 # These are NOT shipped to end users.
 [dependency-groups]

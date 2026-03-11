@@ -1,21 +1,21 @@
 """ImageGeometry3D — CSG leaf node built from a 3D volume level-set field.
 
-Inherits from sdf3d.geometry.Geometry3D so that volumetric image-derived SDFs
+Inherits from sdf3d.geometry.SDF3D so that volumetric image-derived SDFs
 automatically get all pySdf 3D methods: translate(), rotate(), scale(),
 union(), subtract(), intersect(), round(), onion(), etc.
 """
 from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
-from sdf3d.geometry import Geometry3D
+from sdf3d.geometry import SDF3D
 
 _Array = npt.NDArray[np.floating]
 
 
-class ImageGeometry3D(Geometry3D):
+class ImageGeometry3D(SDF3D):
     """A 3-D SDF geometry sourced from a segmented volumetric level-set field.
 
-    Inherits the full pySdf Geometry3D API — including translate(),
+    Inherits the full pySdf SDF3D API — including translate(),
     rotate_x/y/z(), scale(), union(), subtract(), intersect().
 
     Parameters
