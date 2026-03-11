@@ -53,6 +53,20 @@ from .geometry import (
 from .geometry import save_npy
 from .amrex import MultiFabGrid3D
 from .examples import NATOFragment, RocketAssembly
+from .distributions import (
+    generate_centers_random,
+    generate_centers_inline,
+    generate_centers_staggered,
+    distribute_shape,
+)
+from .metamaterials import (
+    Gyroid3D,
+    SchwarzP3D,
+    SchwarzD3D,
+    Neovius3D,
+    BCCLattice3D,
+    FCCLattice3D,
+)
 
 __version__ = "0.2.0"
 
@@ -80,4 +94,18 @@ __all__ = [
 
     # Module-level visualisation
     "save_plotly_html_grid",
+
+    # Distributions
+    "generate_centers_random",
+    "generate_centers_inline",
+    "generate_centers_staggered",
+    "distribute_shape",
+
+    # Metamaterials / TPMS
+    "Gyroid3D",
+    "SchwarzP3D",
+    "SchwarzD3D",
+    "Neovius3D",
+    "BCCLattice3D",
+    "FCCLattice3D",
 ]

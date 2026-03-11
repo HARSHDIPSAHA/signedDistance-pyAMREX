@@ -102,6 +102,12 @@ from .geometry import (
 
 from .geometry import save_npy
 from .amrex import MultiFabGrid2D
+from .distributions import (
+    generate_centers_random,
+    generate_centers_inline,
+    generate_centers_staggered,
+    distribute_shape,
+)
 
 __version__ = "0.2.0"
 
@@ -170,4 +176,10 @@ __all__ = [
 
     # AMReX integration
     "MultiFabGrid2D",
+
+    # Distributions
+    "generate_centers_random",
+    "generate_centers_inline",
+    "generate_centers_staggered",
+    "distribute_shape",
 ]
