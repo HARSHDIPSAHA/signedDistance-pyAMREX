@@ -237,7 +237,7 @@ def distribute_shape(
         raise ValueError("centers array is empty")
 
     shapes = [
-        shape_factory(**kwargs).translate(float(cx), float(cy), float(cz))
+        shape_factory(**kwargs).translate(cx, cy, cz)
         for cx, cy, cz in centers
     ]
     return functools.reduce(operator.or_, shapes)

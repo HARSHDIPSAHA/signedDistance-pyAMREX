@@ -9,8 +9,8 @@ Available classes
 * :class:`SchwarzP3D`    — cos(x) + cos(y) + cos(z)          (Primitive)
 * :class:`SchwarzD3D`    — Diamond surface
 * :class:`Neovius3D`     — 3*(cos x+cos y+cos z) + 4*cos x*cos y*cos z
-* :class:`BCCLattice3D`  — Body-centred-cubic beam lattice
-* :class:`FCCLattice3D`  — Face-centred-cubic beam lattice
+* :class:`BCCLattice3D`  — Body-centered-cubic beam lattice
+* :class:`FCCLattice3D`  — Face-centered-cubic beam lattice
 
 Each class accepts `cell_size` (default 1.0) and `thickness` (the half-width
 of the solid shell around the zero level-set, default 0.1).  Optional `repeat`
@@ -274,7 +274,7 @@ def _capsule_sdf(p: np.ndarray, a: np.ndarray, b: np.ndarray, r: float) -> np.nd
 class BCCLattice3D(SDF3D):
     """Body-Centred Cubic (BCC) beam lattice.
 
-    Generates a BCC unit cell from 8 corner-to-centre beams (capsules).
+    Generates a BCC unit cell from 8 corner-to-center beams (capsules).
     The unit cell is tiled over *repeat* periods.
 
     Parameters
@@ -298,7 +298,7 @@ class BCCLattice3D(SDF3D):
         self._beam_radius = float(beam_radius)
         self._repeat = tuple(int(r) for r in repeat)
 
-        # BCC: 8 corners + 1 body centre
+        # BCC: 8 corners + 1 body center
         # Corners are at (0,0,0) to (1,1,1) in unit-cell fractions
         _corners = np.array([
             [0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0],
@@ -314,12 +314,12 @@ class BCCLattice3D(SDF3D):
             p_mod = np.mod(p, np.array([rx * cs, ry * cs, rz * cs]))
             p_cell = np.mod(p_mod, cs)  # within [0, cell_size)^3
 
-            # Build union of corner-to-centre capsules
+            # Build union of corner-to-center capsules
             corners = _corners * cs
-            centre = _center * cs
+            center = _center * cs
             d = np.full(p_cell.shape[:-1], np.inf)
             for c in corners:
-                d = np.minimum(d, _capsule_sdf(p_cell, c, centre, self._beam_radius))
+                d = np.minimum(d, _capsule_sdf(p_cell, c, center, self._beam_radius))
             return d
 
         super().__init__(func)
@@ -352,12 +352,12 @@ class FCCLattice3D(SDF3D):
         self._beam_radius = float(beam_radius)
         self._repeat = tuple(int(r) for r in repeat)
 
-        # FCC: 8 corners + 6 face centres
+        # FCC: 8 corners + 6 face centers
         _corners = np.array([
             [0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0],
             [0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1],
         ], dtype=float)
-        _face_centres = np.array([
+        _face_centers = np.array([
             [0.5, 0.5, 0.0], [0.5, 0.5, 1.0],
             [0.5, 0.0, 0.5], [0.5, 1.0, 0.5],
             [0.0, 0.5, 0.5], [1.0, 0.5, 0.5],
@@ -370,14 +370,14 @@ class FCCLattice3D(SDF3D):
             p_cell = np.mod(p_mod, cs)
 
             corners = _corners * cs
-            face_centres = _face_centres * cs
+            face_centers = _face_centers * cs
 
             d = np.full(p_cell.shape[:-1], np.inf)
-            # Connect each face centre to the 4 corners sharing that face.
-            # A face centre has exactly one coordinate at 0 or 1 (the "face
+            # Connect each face center to the 4 corners sharing that face.
+            # A face center has exactly one coordinate at 0 or 1 (the "face
             # axis") and the other two at 0.5.  The 4 adjacent corners are
-            # those whose coordinate on the face axis matches the face centre.
-            for fc in face_centres:
+            # those whose coordinate on the face axis matches the face center.
+            for fc in face_centers:
                 fc_norm = fc / cs
                 # Identify the face axis: the one coordinate that is 0 or 1
                 face_axis = int(np.argmax(np.abs(fc_norm - 0.5)))
