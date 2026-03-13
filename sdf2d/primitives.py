@@ -375,7 +375,7 @@ def sdCross2D(p: Points2D, b: FloatArray, r: float) -> Distances:
 def sdRoundedX2D(p: Points2D, w: float, r: float) -> Distances:
     """2-D rounded X (cross at 45°); *w* width, *r* rounding."""
     px = np.abs(p[..., 0]);  py = np.abs(p[..., 1])
-    q  = (px + py - w) * 0.5
+    q  = np.minimum(px + py, w) * 0.5
     return length(vec2(px - q, py - q)) - r
 
 
@@ -385,7 +385,7 @@ def sdPolygon2D(p: Points2D, v: FloatArray) -> Distances:
     d = dot2(p - v[0])
     s = 1.0
     for i in range(N):
-        j = (i + 1) % N
+        j = (i - 1) % N
         e = v[j] - v[i]
         w = p - v[i]
         b = w - e * clamp(dot(w, e) / dot2(e), 0.0, 1.0)[..., None]
